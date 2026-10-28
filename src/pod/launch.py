@@ -128,14 +128,23 @@ def cmd_start(a):
     print(r.stdout, r.stderr[-300:])
 
 
-def fetch(st, k, name, cache):
+def fetch(st, k, name, cache, streams=4):
+    """Copy out/<name> from the pod, skipping files already here with the same size; up to `streams` files at once."""
     dest = pathlib.Path(cache)
-    dest.mkdir(parents=True, exist_ok=True)
+    (dest/name).mkdir(parents=True, exist_ok=True)
     t = time.time()
-    p = subprocess.run(' '.join(ssh_base(st, k)) + f" 'tar cf - -C {REMOTE}/out {name}' | tar xf - -C {dest}", shell=True,
-                       capture_output=True, text=True, timeout=3600)
-    ok = p.returncode == 0 and (dest/name).exists()
-    print('fetched' if ok else 'FETCH FAILED', name, round(time.time() - t), 's', p.stderr[-300:], flush=True)
+    r = ssh(st, k, f"cd {REMOTE}/out && find {name} -type f -printf '%s %p\\n'")
+    files = [ln.split(' ', 1) for ln in r.stdout.splitlines() if ' ' in ln]
+    todo = [f for sz, f in files if not ((dest/f).exists() and (dest/f).stat().st_size == int(sz))]
+    procs = []
+    for f in sorted(todo, key=lambda f: -int(dict((b, a) for a, b in files)[f])):
+        while len([q for q in procs if q.poll() is None]) >= streams:
+            time.sleep(2)
+        procs.append(subprocess.Popen(' '.join(ssh_base(st, k)) + f" 'tar cf - -C {REMOTE}/out {f}' | tar xf - -C {dest}", shell=True))
+    for q in procs:
+        q.wait()
+    ok = all((dest/f).exists() and (dest/f).stat().st_size == int(sz) for sz, f in files) and bool(files)
+    print('fetched' if ok else 'FETCH FAILED', name, len(todo), 'files', round(time.time() - t), 's', flush=True)
     return ok
 
 

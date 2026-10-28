@@ -21,6 +21,11 @@ restored block input equals the patch embeddings. With randomly initialised copi
 | SpaceQwen2.5-VL-3B | 14 | 16 / 16 / 560 / 14,080 | 0 | yes |
 | Qwen2.5-VL-3B | 14 | 16 / 16 / 560 / 14,080 | 0 | yes |
 
+**On the rented GPU.**
+- The audit was re-run on each downloaded model before extraction: PASS on all five (`data/pod/`).
+- The window-order assertion held on the first batch of both Qwen2.5-VL models, recorded as `checks.window_order: true`
+  in each model's `meta.json` on the dataset.
+
 **Verdict.** PASS on all five. A direct reshape misplaces 14,080 of 14,400 locations on a 160x90 grid; `restore_grid`
 misplaces none, and merged token k sits at row k // (W/2), column k % (W/2) of the merged grid.
 

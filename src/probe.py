@@ -74,7 +74,11 @@ class KRidge:
     def fit_predict(self, tr, te, y, alphas):
         Ktt = self.K[np.ix_(tr, tr)] if isinstance(self.K, np.ndarray) else self.K[tr][:, tr]
         Ket = self.K[np.ix_(te, tr)] if isinstance(self.K, np.ndarray) else self.K[te][:, tr]
-        lam, Q = torch.linalg.eigh(Ktt.double() if self.dev == 'cpu' else Ktt)
+        try:
+            lam, Q = torch.linalg.eigh(Ktt.double() if self.dev == 'cpu' else Ktt)
+        except torch.linalg.LinAlgError:                       # ill-conditioned in float32 on the GPU: redo in float64
+            lam, Q = torch.linalg.eigh(Ktt.double().cpu())
+            Ket = Ket.cpu()
         lam = lam.clamp_min(0)
         mu = y[tr].mean(0)
         yt = torch.as_tensor(y[tr] - mu, dtype=Q.dtype, device=Q.device)
@@ -96,29 +100,41 @@ def gram(X, train_mask, dev):
 
 
 def probe_layer(X, recs, splits, dev, rng_groups, targets=TARGETS, shuffle=None):
-    """All targets for one feature matrix. Returns {target: {'alpha', 'cv', 'test_pred'}}."""
+    """All targets for one feature matrix. Returns {target: {'alpha', 'cv', 'test_idx', 'test_pred'}}. Targets with the
+    same training domains share one eigendecomposition per fold."""
     train_all = np.array([o['split'] == 'train' for o in recs])
     K = gram(X, train_all, dev)
     kr = KRidge(K, dev)
+    doms_of = np.array([o['domain'] for o in recs])
+    split_of = np.array([o['split'] for o in recs])
     res = {}
+    groups_by_doms = {}
     for t, (doms, _) in targets.items():
-        y = target_matrix(recs, t)
-        ok = ~np.isnan(y).any(1)
-        tr = np.where(train_all & ok & np.isin([o['domain'] for o in recs], doms))[0]
-        te = np.where(np.isin([o['split'] for o in recs], ['test', 'heldout']) & ok)[0]
-        ytr = y.copy()
+        groups_by_doms.setdefault(doms, []).append(t)
+    for doms, ts in groups_by_doms.items():
+        ys = {t: target_matrix(recs, t) for t in ts}
+        ok = np.all([~np.isnan(ys[t]).any(1) for t in ts], 0)
+        tr = np.where(train_all & ok & np.isin(doms_of, doms))[0]
+        te = np.where(np.isin(split_of, ['test', 'heldout']) & ok)[0]
+        Y = np.concatenate([ys[t] for t in ts], 1)
+        cols = np.cumsum([0] + [ys[t].shape[1] for t in ts])
         if shuffle is not None:
-            ytr[tr] = y[tr][shuffle(len(tr))]
+            Y = Y.copy()
+            Y[tr] = Y[tr][shuffle(len(tr))]
         groups = np.array([rng_groups[recs[i]['id']] for i in tr])
-        cv = np.zeros(len(ALPHAS))
+        cv = {t: np.zeros(len(ALPHAS)) for t in ts}
         for f in range(FOLDS):
             a_tr, a_te = tr[groups != f], tr[groups == f]
-            for j, p in enumerate(kr.fit_predict(a_tr, a_te, ytr, ALPHAS)):
-                cv[j] += cv_score(t, p, ytr[a_te], a_te, recs) * len(a_te)
-        cv /= len(tr)
-        j = int(np.argmin(cv))
-        pred = kr.fit_predict(tr, te, ytr, [ALPHAS[j]])[0]
-        res[t] = {'alpha': ALPHAS[j], 'cv': float(cv[j]), 'test_idx': te.tolist(), 'test_pred': pred.tolist()}
+            for j, pr in enumerate(kr.fit_predict(a_tr, a_te, Y, ALPHAS)):
+                for n, t in enumerate(ts):
+                    cv[t][j] += cv_score(t, pr[:, cols[n]:cols[n + 1]], Y[a_te, cols[n]:cols[n + 1]], a_te, recs) * len(a_te)
+        best = {t: int(np.argmin(cv[t])) for t in ts}
+        preds = kr.fit_predict(tr, te, Y, [ALPHAS[j] for j in sorted(set(best.values()))])
+        by_alpha = dict(zip(sorted(set(best.values())), preds))
+        for n, t in enumerate(ts):
+            j = best[t]
+            res[t] = {'alpha': ALPHAS[j], 'cv': float(cv[t][j] / len(tr)), 'test_idx': te.tolist(),
+                      'test_pred': by_alpha[j][:, cols[n]:cols[n + 1]].tolist()}
     return res
 
 

@@ -42,6 +42,8 @@ def subset_mask(recs, idx, dataset):
 
 # ---------------------------------------------------------------------------- per-item errors
 def err_xy(recs, idx, pred):
+    if len(idx) == 0:
+        return np.zeros(0)
     W = np.array([[recs[i]['W'], recs[i]['H']] for i in idx], float)
     y = np.array([recs[i]['xy'] for i in idx], float)
     d = (np.asarray(pred, float) - y) * W
@@ -72,11 +74,13 @@ class Boot:
             self.W[b] = np.bincount(draws[b], minlength=n)
 
     def sums(self, item_ids, values):
-        j = np.array([self.pos[i] for i in item_ids])
+        j = np.array([self.pos[i] for i in item_ids], dtype=int)
         s = np.bincount(j, weights=values, minlength=len(self.ids)); c = np.bincount(j, minlength=len(self.ids)).astype(float)
         return s, c
 
     def mean(self, item_ids, values):
+        if len(item_ids) == 0:
+            return float('nan'), np.full(B, np.nan)
         s, c = self.sums(item_ids, np.asarray(values, float))
         return float(s.sum() / c.sum()), (self.W @ s) / np.maximum(self.W @ c, 1e-9)
 
@@ -90,7 +94,9 @@ class Boot:
 
 
 def ci(boot):
-    lo, hi = np.percentile(boot, [2.5, 97.5])
+    if not np.isfinite(boot).any():
+        return [float('nan'), float('nan')]
+    lo, hi = np.nanpercentile(boot, [2.5, 97.5])
     return [float(lo), float(hi)]
 
 
@@ -230,7 +236,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--cache', required=True)
     ap.add_argument('--out', required=True)
+    ap.add_argument('--models', default=','.join(MODELS))
     a = ap.parse_args()
+    MODELS[:] = a.models.split(',')
     cache = Path(a.cache)
     rows_all = json.loads((cache/'data/dataset.json').read_text())
     rows = [r for r in rows_all if r['domain'] != 'figure']
@@ -358,7 +366,7 @@ def probe_relations(recs, probe, boot, dataset):
             if ia not in preds[t] or ib not in preds[t]:
                 continue
             pa, pb = np.ravel(preds[t][ia]), np.ravel(preds[t][ib])
-            ans = {'closer': pa[0] < pb[0], 'left_of': pa[0] < pb[0], 'above': pa[1] < pb[1], 'bigger': pa[0] > pb[0]}[r_]
+            ans = pa[1] < pb[1] if r_ == 'above' else pa[0] > pb[0] if r_ == 'bigger' else pa[0] < pb[0]
             corr.append(ans == t_); truth.append(t_); ids.append(rid); rel.append(r_)
         out[fam] = {}
         for r_ in ('closer', 'left_of', 'above', 'bigger', 'pooled'):
@@ -454,8 +462,9 @@ def ask_scores(model, mdir, meta, recs, rows, byid, rindex, boot, probe, moge, r
     for dataset in ('all', 'calm'):
         D = {}
         for target, field in (('depth', 'depth'), ('xy', 'xy'), ('size', 'size')):
-            for split, doms in (('test', TRAIN_DOMAINS[target]), ('heldout', ('street',)), ('test_people', ('people',))):
-                if split == 'test_people' and target != 'xy':
+            for split, doms in (('test', TRAIN_DOMAINS[target]), ('heldout', ('street',)), ('test_people', ('people',)),
+                                ('test_indoor', ('indoor',)), ('test_two_people', ('two_people',))):
+                if (split == 'test_people' and target != 'xy') or (split in ('test_indoor', 'test_two_people') and target != 'depth'):
                     continue
                 idx = [i for i, o in enumerate(recs) if o['split'] == ('heldout' if split == 'heldout' else 'test') and o['domain'] in doms
                        and val(o, target) is not None and (dataset == 'all' or o['activity'] not in COMBAT)]
@@ -463,9 +472,17 @@ def ask_scores(model, mdir, meta, recs, rows, byid, rindex, boot, probe, moge, r
                     continue
                 have = [i for i in idx if field in parsed.get(recs[i]['id'], [{}] * 9)[recs[i]['k']]]
                 cov = len(have) / len(idx)
+                if not have:
+                    D[f'{target}_{split}'] = {'coverage': 0.0, 'n_asked': len(idx)}
+                    continue
                 e = {}
                 if target == 'xy':
-                    e['ask'] = err_xy(recs, have, [parsed[recs[i]['id']][recs[i]['k']]['xy'] for i in have])
+                    xy = np.array([parsed[recs[i]['id']][recs[i]['k']]['xy'] for i in have], float)
+                    e['ask'] = err_xy(recs, have, xy)
+                    # exploratory (after the run): answers above 100 are read as the 0-1000 grounding scale
+                    out_rng = (xy > 1.0).any(1)
+                    if meta['kind'] == 'qwen3_5':           # the Qwen3 family's grounding scale is 0-1000
+                        e['ask_rescaled_exploratory'] = err_xy(recs, have, np.where(out_rng[:, None], xy / 10, xy))
                 else:
                     e['ask'] = err_absrel([recs[i][target] for i in have], [parsed[recs[i]['id']][recs[i]['k']][field] for i in have])
                 e['P'] = score(recs, target, have, prior_pred(recs, target, have))
@@ -481,6 +498,15 @@ def ask_scores(model, mdir, meta, recs, rows, byid, rindex, boot, probe, moge, r
                         e['MoGe-2'] = err_absrel([recs[i]['depth'] for i in have], mv)
                 key = f'{target}_{split}'
                 D[key] = {'coverage': cov, 'n_asked': len(idx), **{k: stat(*boot.mean([recs[i]['id'] for i in have], v), len(have)) for k, v in e.items()}}
+                if target == 'xy':
+                    D[key]['share_above_100'] = float(out_rng.mean())
+                    D[key]['median_ask'] = float(np.median(e['ask']))
+                ids_ = [recs[i]['id'] for i in have]
+                pp, pb = boot.mean(ids_, e['P']); ap_, ab = boot.mean(ids_, e['ask'])
+                D[key]['P_minus_ask'] = stat(pp - ap_, pb - ab, len(have))
+                D[key]['ask_gain_over_P'] = float((pp - ap_) / pp) if pp else None
+                D[key]['ask_is_measurement'] = bool(D[key]['ask_gain_over_P'] is not None and D[key]['ask_gain_over_P'] >= 0.2
+                                                    and D[key]['P_minus_ask']['ci'][0] > 0)   # pre-registered rule (Q1)
                 if target == 'depth':
                     D[key]['delta125_ask'] = stat(*boot.mean([recs[i]['id'] for i in have], delta125([recs[i]['depth'] for i in have],
                                               [parsed[recs[i]['id']][recs[i]['k']]['depth'] for i in have])), len(have))
@@ -570,6 +596,14 @@ def paired(R, recs, rows, cache, boot):
                     ids = [recs[i]['id'] for i in have]
                     pa, ba = boot.mean(ids, errs[A]); pb, bb = boot.mean(ids, errs[Bm])
                     D[f'{target}_{split}'] = {A: stat(pa, ba, len(have)), Bm: stat(pb, bb, len(have)), 'diff_A_minus_B': stat(pa - pb, ba - bb, len(have))}
+                    if target == 'xy' and all(json.loads((cache/'out'/mm/'meta.json').read_text())['kind'] == 'qwen3_5' for mm in (A, Bm)):
+                        # exploratory: answers above 100 read as the Qwen3 family's 0-1000 grounding scale
+                        re = {}
+                        for mm in (A, Bm):
+                            v = np.array([asks[mm][recs[i]['id']][0][recs[i]['k']]['xy'] for i in have], float)
+                            re[mm] = err_xy(recs, have, np.where((v > 1).any(1)[:, None], v / 10, v))
+                        pa, ba = boot.mean(ids, re[A]); pb, bb = boot.mean(ids, re[Bm])
+                        D[f'xy_rescaled_exploratory_{split}'] = {A: stat(pa, ba, len(have)), Bm: stat(pb, bb, len(have)), 'diff_A_minus_B': stat(pa - pb, ba - bb, len(have))}
             if A in yn and Bm in yn:
                 for kind in ('relation', 'naming'):
                     ka = {(x['id'], x.get('relation', x.get('name')), x.get('a'), x.get('b')): x for x in yn[A] if x['kind'] == kind

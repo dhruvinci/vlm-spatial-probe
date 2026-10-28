@@ -1,0 +1,4 @@
+moge==3.0.0
+torch==2.13.0+cu130
+numpy==2.5.2
+pillow==12.3.0
