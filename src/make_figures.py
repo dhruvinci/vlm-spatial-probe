@@ -75,7 +75,7 @@ def figure1(plt, R, cache, out):
             lines.append(f"{short[o['name']]} {d:.3g} m" if d else f"{short[o['name']]}: none")
         ax.set_xlim(0, W); ax.set_ylim(H, 0)
         off = any(q.get('xy') and max(q['xy']) > 1 for q in parsed)
-        ax.set_title(model + ('\ncentres came back above 100: drawn at the edge' if off else '\n'), loc='left', fontsize=9.5)
+        ax.set_title(model + ('\ncentres off scale (>100), at edge' if off else '\n'), loc='left', fontsize=9.5)
         ax.text(0, -0.03, 'asked distance from the camera:\n' + ', '.join(lines[:2]) + ',\n' + ', '.join(lines[2:]),
                 transform=ax.transAxes, fontsize=8, color=INK2, va='top')
     for ax in axes[n:]:
@@ -205,7 +205,7 @@ def models_figure(plt, R, out, dataset='all'):
                ('ask', 'distance_test', 'Distance between two objects (abs-rel)', False),
                ('ground', 'xy_test', 'Position, native box centre (% diagonal)', False),
                ('yesno', 'pooled_test/all', 'Relations, yes/no (balanced acc.)', True), ('yesno', 'naming/pooled', 'Naming check (accuracy)', True)]
-    fig, axes = plt.subplots(2, 3, figsize=(14.0, 6.4), gridspec_kw={'wspace': 0.75, 'hspace': 0.55})
+    fig, axes = plt.subplots(2, 3, figsize=(15.5, 6.6), gridspec_kw={'wspace': 1.05, 'hspace': 0.55})
     for ax, (src, key, title, higher) in zip(axes.ravel(), metrics):
         vals = []
         for m in run:
@@ -219,6 +219,8 @@ def models_figure(plt, R, out, dataset='all'):
             ax.plot(s['ci'], [yy, yy], color=INK2, lw=1)
             ax.text(s['ci'][1], yy, f"  {s['value']:.2f}" if s['value'] < 10 else f"  {s['value']:.1f}", va='center', fontsize=7.5, color=INK2)
         ax.set_yticks(y); ax.set_yticklabels([SHORT[m] for m, _ in vals], fontsize=8)
+        if not higher and vals:                                     # room for the value labels past the longest bar
+            ax.set_xlim(0, max(s['ci'][1] for _, s in vals) * 1.22)
         if higher:
             ax.axvline(0.5, color=INK2, lw=0.8, ls=':')
             ax.set_xlim(0.4, 1.0)
