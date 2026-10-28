@@ -44,6 +44,12 @@ def main():
     pick = [next(r for r in rows if r['domain'] == d) for d in ('people', 'street', 'two_people', 'figure')]
     R = X.Runner(a.model_dir, dense=False)
     R.model.float()
+    pe = R.visual.patch_embed
+    px = torch.randn(64, pe.proj.weight[0].numel())
+    conv = pe.proj(px.view(-1, *pe.proj.weight.shape[1:])).view(64, -1)
+    rel = float((pe(px) - conv).abs().max() / conv.abs().max())
+    print('patch embed: matrix product vs Conv3d, max rel diff', f'{rel:.1e}')
+    assert rel < 1e-4
     for part in ('feat', 'noimg'):
         batch, texts = readouts(R, pick, data, part)
         print(part, 'prompt:', repr(texts[0][:400]))

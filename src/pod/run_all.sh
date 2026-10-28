@@ -8,10 +8,11 @@ mkdir -p logs out models src_data/nyu
 exec >> logs/run_all.log 2>&1
 echo "start $(date -u +%FT%TZ)"
 nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv
+export PIP_BREAK_SYSTEM_PACKAGES=1     # the image's system Python is marked externally managed (PEP 668)
 pip install -q -r env/requirements-pod.txt && pip install -q --no-deps flash-linear-attention==0.5.2 fla-core==0.5.2
 python -c "import torch, transformers; print('torch', torch.__version__, 'cuda', torch.version.cuda, 'transformers', transformers.__version__)"
 (
-  curl -sL --retry 5 -o src_data/nyu/nyu_depth_v2_labeled.mat http://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2/nyu_depth_v2_labeled.mat &&
+  curl -sL --retry 5 -C - -o src_data/nyu/nyu_depth_v2_labeled.mat http://horatio.cs.nyu.edu/mit/silberman/nyu_depth_v2/nyu_depth_v2_labeled.mat &&
   python src/build_dataset.py nyu --src src_data/nyu --out data && python src/build_dataset.py finish --out data && touch data/READY
 ) > logs/data.log 2>&1 &
 (

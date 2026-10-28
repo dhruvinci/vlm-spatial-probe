@@ -84,6 +84,21 @@ def box_mask(box, h, w):
     return m.reshape(-1)
 
 
+def fast_patch_embed(pe, checks):
+    """The patch embedding is a Conv3d whose kernel equals its stride, i.e. one linear map per patch. On the rented
+    Blackwell GPU (torch 2.9.1, CUDA 12.8) that Conv3d ran at about 45 s per batch, so it is replaced by the same
+    weights as a matrix product (tests/check_extract.py checks the two agree)."""
+    conv = pe.proj
+    if not (isinstance(conv, torch.nn.Conv3d) and tuple(conv.kernel_size) == tuple(conv.stride)):
+        return
+    def forward(hidden_states):
+        W = conv.weight.reshape(conv.out_channels, -1)
+        y = hidden_states.reshape(-1, W.shape[1]).to(W.dtype) @ W.T
+        return y + conv.bias if conv.bias is not None else y
+    pe.forward = forward
+    checks['patch_embed'] = 'Conv3d (kernel == stride) computed as the equivalent matrix product'
+
+
 class Runner:
     def __init__(self, model_dir, dense):
         from transformers import AutoModelForImageTextToText, AutoProcessor
@@ -100,6 +115,8 @@ class Runner:
         self.image_pad = tok.convert_ids_to_tokens(self.image_token_id)
         self.yes_ids = sorted({tok.encode(w, add_special_tokens=False)[0] for w in ('yes', 'Yes', 'YES')})
         self.no_ids = sorted({tok.encode(w, add_special_tokens=False)[0] for w in ('no', 'No', 'NO')})
+        self.checks = {}
+        fast_patch_embed(self.visual.patch_embed, self.checks)
         self.n_vis = len(self.visual.blocks)
         self.n_lm = len(self.model.model.language_model.layers) + 1
         self.d_vis = self.visual.blocks[0].norm1.weight.shape[0]
@@ -110,7 +127,6 @@ class Runner:
         self.dense_lm_layers = sorted(set(range(0, self.n_lm, 4)) | {self.n_lm - 1})
         self.R_vis = (torch.randn(self.d_vis, DENSE_DIMS, generator=g) / DENSE_DIMS ** 0.5)
         self.R_lm = (torch.randn(self.d_lm, DENSE_DIMS, generator=g) / DENSE_DIMS ** 0.5)
-        self.checks = {}
 
     def chat(self, text, image=True):
         content = ([{'type': 'image'}] if image else []) + [{'type': 'text', 'text': text}]
