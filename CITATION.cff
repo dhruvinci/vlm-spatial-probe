@@ -1,0 +1,15 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite it."
+title: "Naming isn't locating: probing where spatial information lives inside vision-language models"
+authors:
+  - family-names: Chakravarthi
+    given-names: Dhruva
+year: 2026
+repository-code: "https://github.com/dhruvinci/vlm-spatial-probe"
+license: MIT
+keywords:
+  - vision-language models
+  - probing
+  - depth
+  - spatial reasoning
+  - negative results

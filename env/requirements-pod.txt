@@ -1,0 +1,11 @@
+# On the rented GPU, on top of the container image runpod/pytorch:1.4.0-cu1290-torch291-ubuntu2404 (torch 2.9.1, CUDA 12.9).
+transformers==5.21.0
+accelerate==1.15.0
+huggingface_hub==2.3.0
+hf_xet==1.7.0
+tokenizers==0.23.3
+safetensors==0.8.0
+pillow==12.3.0
+h5py==3.16.0
+einops==0.8.2
+# installed with --no-deps (keeps the image's torch): flash-linear-attention==0.5.2 fla-core==0.5.2

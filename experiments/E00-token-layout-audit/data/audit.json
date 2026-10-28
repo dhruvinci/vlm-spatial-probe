@@ -1,0 +1,357 @@
+[
+ {
+  "model_dir": "Qwen3.8-27B",
+  "transformers": "5.21.0",
+  "processor": "Qwen2VLImageProcessor",
+  "patch_size": 16,
+  "merge_size": 2,
+  "temporal_patch_size": 2,
+  "fixtures": [
+   {
+    "grid_hw": [
+     4,
+     6
+    ],
+    "processor_grid_thw": [
+     1,
+     4,
+     6
+    ],
+    "total_locations": 24,
+    "direct_reshape_misplaced": 16,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   },
+   {
+    "grid_hw": [
+     8,
+     4
+    ],
+    "processor_grid_thw": [
+     1,
+     8,
+     4
+    ],
+    "total_locations": 32,
+    "direct_reshape_misplaced": 16,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   },
+   {
+    "grid_hw": [
+     20,
+     30
+    ],
+    "processor_grid_thw": [
+     1,
+     20,
+     30
+    ],
+    "total_locations": 600,
+    "direct_reshape_misplaced": 560,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   },
+   {
+    "grid_hw": [
+     160,
+     90
+    ],
+    "processor_grid_thw": [
+     1,
+     160,
+     90
+    ],
+    "total_locations": 14400,
+    "direct_reshape_misplaced": 14080,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   }
+  ],
+  "pass": true
+ },
+ {
+  "model_dir": "SpatialAxiom-9B",
+  "transformers": "5.21.0",
+  "processor": "Qwen2VLImageProcessor",
+  "patch_size": 16,
+  "merge_size": 2,
+  "temporal_patch_size": 2,
+  "fixtures": [
+   {
+    "grid_hw": [
+     4,
+     6
+    ],
+    "processor_grid_thw": [
+     1,
+     4,
+     6
+    ],
+    "total_locations": 24,
+    "direct_reshape_misplaced": 16,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   },
+   {
+    "grid_hw": [
+     8,
+     4
+    ],
+    "processor_grid_thw": [
+     1,
+     8,
+     4
+    ],
+    "total_locations": 32,
+    "direct_reshape_misplaced": 16,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   },
+   {
+    "grid_hw": [
+     20,
+     30
+    ],
+    "processor_grid_thw": [
+     1,
+     20,
+     30
+    ],
+    "total_locations": 600,
+    "direct_reshape_misplaced": 560,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   },
+   {
+    "grid_hw": [
+     160,
+     90
+    ],
+    "processor_grid_thw": [
+     1,
+     160,
+     90
+    ],
+    "total_locations": 14400,
+    "direct_reshape_misplaced": 14080,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   }
+  ],
+  "pass": true
+ },
+ {
+  "model_dir": "Qwen3.5-9B",
+  "transformers": "5.21.0",
+  "processor": "Qwen2VLImageProcessor",
+  "patch_size": 16,
+  "merge_size": 2,
+  "temporal_patch_size": 2,
+  "fixtures": [
+   {
+    "grid_hw": [
+     4,
+     6
+    ],
+    "processor_grid_thw": [
+     1,
+     4,
+     6
+    ],
+    "total_locations": 24,
+    "direct_reshape_misplaced": 16,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   },
+   {
+    "grid_hw": [
+     8,
+     4
+    ],
+    "processor_grid_thw": [
+     1,
+     8,
+     4
+    ],
+    "total_locations": 32,
+    "direct_reshape_misplaced": 16,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   },
+   {
+    "grid_hw": [
+     20,
+     30
+    ],
+    "processor_grid_thw": [
+     1,
+     20,
+     30
+    ],
+    "total_locations": 600,
+    "direct_reshape_misplaced": 560,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   },
+   {
+    "grid_hw": [
+     160,
+     90
+    ],
+    "processor_grid_thw": [
+     1,
+     160,
+     90
+    ],
+    "total_locations": 14400,
+    "direct_reshape_misplaced": 14080,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   }
+  ],
+  "pass": true
+ },
+ {
+  "model_dir": "SpaceQwen2.5-VL-3B-Instruct",
+  "transformers": "5.21.0",
+  "processor": "Qwen2VLImageProcessor",
+  "patch_size": 14,
+  "merge_size": 2,
+  "temporal_patch_size": 2,
+  "fixtures": [
+   {
+    "grid_hw": [
+     4,
+     6
+    ],
+    "processor_grid_thw": [
+     1,
+     4,
+     6
+    ],
+    "total_locations": 24,
+    "direct_reshape_misplaced": 16,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   },
+   {
+    "grid_hw": [
+     8,
+     4
+    ],
+    "processor_grid_thw": [
+     1,
+     8,
+     4
+    ],
+    "total_locations": 32,
+    "direct_reshape_misplaced": 16,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   },
+   {
+    "grid_hw": [
+     20,
+     30
+    ],
+    "processor_grid_thw": [
+     1,
+     20,
+     30
+    ],
+    "total_locations": 600,
+    "direct_reshape_misplaced": 560,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   },
+   {
+    "grid_hw": [
+     160,
+     90
+    ],
+    "processor_grid_thw": [
+     1,
+     160,
+     90
+    ],
+    "total_locations": 14400,
+    "direct_reshape_misplaced": 14080,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   }
+  ],
+  "pass": true
+ },
+ {
+  "model_dir": "Qwen2.5-VL-3B-Instruct",
+  "transformers": "5.21.0",
+  "processor": "Qwen2VLImageProcessor",
+  "patch_size": 14,
+  "merge_size": 2,
+  "temporal_patch_size": 2,
+  "fixtures": [
+   {
+    "grid_hw": [
+     4,
+     6
+    ],
+    "processor_grid_thw": [
+     1,
+     4,
+     6
+    ],
+    "total_locations": 24,
+    "direct_reshape_misplaced": 16,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   },
+   {
+    "grid_hw": [
+     8,
+     4
+    ],
+    "processor_grid_thw": [
+     1,
+     8,
+     4
+    ],
+    "total_locations": 32,
+    "direct_reshape_misplaced": 16,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   },
+   {
+    "grid_hw": [
+     20,
+     30
+    ],
+    "processor_grid_thw": [
+     1,
+     20,
+     30
+    ],
+    "total_locations": 600,
+    "direct_reshape_misplaced": 560,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   },
+   {
+    "grid_hw": [
+     160,
+     90
+    ],
+    "processor_grid_thw": [
+     1,
+     160,
+     90
+    ],
+    "total_locations": 14400,
+    "direct_reshape_misplaced": 14080,
+    "restore_grid_misplaced": 0,
+    "merged_tokens_raster_order": true
+   }
+  ],
+  "pass": true
+ }
+]
