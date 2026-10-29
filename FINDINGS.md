@@ -91,3 +91,18 @@ abs-rel 0.223). It fades through the language layers to 0.345 at the last one, c
     - Test split: up to 10 points. SpaceQwen2.5-VL-3B drops from 0.698 to 0.598; SpatialAxiom-9B does not move (0.926
       vs 0.926) (tables_e06.md:27,39).
     - All items, streets included: up to 12.8 points, for Qwen2.5-VL-3B (tables_e06.md:44).
+
+## E07: why the decoder does not transfer (pre-registered)
+`experiments/E07-transfer-diagnosis/data/tables_e07.md`; depth only; lower is better; E03's layers.
+
+19. **What fails to transfer is absolute scale.** A decoder fitted to depth within each image (features and log
+    depths centred per image) beats E03's decoder on relative depth in 7 of 8 held-out folds and never loses (for
+    example, Qwen3.8-27B indoor 0.193 -> 0.142, street 0.452 -> 0.318; tables_e07.md:11,13,26,28,53). It still loses to
+    the model's spoken answer on every fold: the words order objects better than any read-out trained here.
+20. **Erasing scene type does not help.** With the training scene types made linearly indistinguishable (a classifier
+    falls to the majority share, tables_e07.md:111-118), the decoder is worse in 5 of 8 folds and better in 2
+    (tables_e07.md:52). The directions that separate scene types also carry depth level.
+21. **Giving the camera helps only where object size is predictable.** Predicting physical size and dividing by the
+    box's angular size passes E03's bar once: Qwen3.8-27B with two people held out, 0.155 against 0.574 spoken and 0.222
+    for MoGe-2 (tables_e07.md:22). There, box plus camera alone already reach 0.266. Elsewhere it is mixed (4 folds
+    better than E03's decoder, 4 worse; tables_e07.md:54).

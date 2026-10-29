@@ -51,4 +51,6 @@ What the time went on:
 - **Idle:** about 15 minutes at the end, during a local power and network cut that stopped the watchdog. It was
   restarted, fetched everything, and terminated the pod.
 
+E07 (2026-10-29) ran locally on CPU on the cached features: $0.
+
 **Paper 04 total, both rentals: $7.66** ($21.6038 → $13.9462).

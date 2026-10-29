@@ -75,6 +75,11 @@ without the two-person dataset's MMA and grappling frames, and no verdict change
     spoken answer; it loses on every unseen scene type. 1 of 26 folds passes, weakly.
   - **Variety helps:** indoor depth error falls from 5.32 (E02) to 0.45 once synthetic indoor is in training; street
     barely moves.
+- [E07](experiments/E07-transfer-diagnosis/): why the decoder does not transfer (pre-registered; local, $0).
+  - **Mostly absolute scale.** Fitted within each image, the decoder's relative depth transfers (better in 7 of 8
+    held-out folds), though the spoken answer still orders objects better.
+  - Erasing scene type does not help; giving the camera helps only where object size is predictable (one pass, Qwen3.8
+    on two people, where box and camera alone already go most of the way).
 - Plan, not run: [docs/PLAN_E03.md](docs/PLAN_E03.md). A decoder trained on many datasets, and the measures not yet
   covered: orientation and angles, surfaces, motion, counts.
 
