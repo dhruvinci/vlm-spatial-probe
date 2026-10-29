@@ -154,6 +154,9 @@ and its native boxes got much worse.
 ## Without MMA and grappling frames
 Every verdict above is unchanged (`tables.md:84-162` for the probes; the paired tables follow each "all frames"
 table).
+Every layer's curve on calm frames, same probes and shape as `results.json`'s `curves`:
+[data/curves_calm.json](data/curves_calm.json) (`src/curves_calm.py`, which also recomputes the all-frame curves
+exactly).
 
 | Qwen3.8-27B, calm frames | value |
 |---|---|
@@ -192,6 +195,11 @@ last layer.
   (tower 0.695, `tables.md:170`), so "the language side holds depth" is shown in-domain only.
 - The name prior for streets uses no street names (none are in training), so it is not a fair street baseline.
 - COCO has no metric truth, so the people domain scores 2D position only.
+- Some spoken answers hit the generation limit inside their pair list. The parser then reads the objects list on its
+  own and counts the answer as "parsed as whole JSON" (`tables.md`), which overstates complete answers by 1
+  (Qwen3.8-27B: the Figure 1 photo, not scored), 0 (SpatialAxiom-9B), 1 (Qwen3.5-9B), 6 (SpaceQwen2.5-VL-3B) and
+  5 (Qwen2.5-VL-3B) of 1,385. The objects' answers are scored as given; the lost pair distances count as missing.
+  (Found 2026-10-29.)
 
 ## Reproduce
 ```
@@ -200,4 +208,6 @@ python src/pod/launch.py create|upload|start|watch ...                          
 python src/probe.py --cache CACHE --model M ; python src/dense_probe.py --cache CACHE --model Qwen3.8-27B
 python src/cv_reference.py moge|rfdetr ... ; python src/analyse.py --cache CACHE --out data/results.json
 python src/report_tables.py --results data/results.json > data/tables.md ; python src/make_figures.py ...
+python src/curves_calm.py --cache CACHE --results data/results.json --out data/curves_calm.json
+python src/figure1_print.py --cache CACHE --model Qwen3.8-27B --out docs/assets --values data/figure1_Qwen3.8-27B.json   # print panel
 ```

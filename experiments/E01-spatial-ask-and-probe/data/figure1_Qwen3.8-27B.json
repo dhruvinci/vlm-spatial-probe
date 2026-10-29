@@ -1,0 +1,127 @@
+{
+ "model": "Qwen3.8-27B",
+ "image": "coco_246285",
+ "image_size_px": [
+  640,
+  455
+ ],
+ "credit": "\"Zach MacPhee Dives Back into First\" by Barry Stahl, CC BY 2.0 (Flickr 5505334912; COCO train2017 246285)",
+ "units": "boxes and native-box centres: fractions of width and height (x1, y1, x2, y2); asked centres: percent of width and height, as the model wrote them; distances in metres. No metric truth exists for this photo.",
+ "objects": [
+  {
+   "name": "player standing on the right",
+   "true_box": [
+    0.463859375,
+    0.29173626373626377,
+    0.811359375,
+    0.9150549450549451
+   ],
+   "asked_centre_percent": [
+    65.0,
+    58.0
+   ],
+   "asked_distance_from_camera_m": 4.5,
+   "asked_size_m": 1.85,
+   "native_box": [
+    0.442,
+    0.294,
+    0.805,
+    0.915
+   ],
+   "native_box_centre": [
+    0.6235,
+    0.6045
+   ]
+  },
+  {
+   "name": "player diving to the base",
+   "true_box": [
+    0.078453125,
+    0.41892307692307695,
+    0.51559375,
+    0.8626153846153847
+   ],
+   "asked_centre_percent": [
+    30.0,
+    62.0
+   ],
+   "asked_distance_from_camera_m": 4.8,
+   "asked_size_m": 1.8,
+   "native_box": [
+    0.078,
+    0.419,
+    0.528,
+    0.856
+   ],
+   "native_box_centre": [
+    0.303,
+    0.6375
+   ]
+  },
+  {
+   "name": "player in the background",
+   "true_box": [
+    0.18703125,
+    0.12947252747252747,
+    0.239015625,
+    0.3378241758241758
+   ],
+   "asked_centre_percent": [
+    21.0,
+    23.0
+   ],
+   "asked_distance_from_camera_m": 25.0,
+   "asked_size_m": 1.8,
+   "native_box": [
+    0.185,
+    0.131,
+    0.24,
+    0.338
+   ],
+   "native_box_centre": [
+    0.2125,
+    0.23450000000000001
+   ]
+  },
+  {
+   "name": "standing player's glove",
+   "true_box": [
+    0.44128125,
+    0.47956043956043953,
+    0.518359375,
+    0.5603516483516483
+   ],
+   "asked_centre_percent": [
+    48.0,
+    51.0
+   ],
+   "asked_distance_from_camera_m": 4.2,
+   "asked_size_m": 0.35,
+   "native_box": [
+    0.44,
+    0.469,
+    0.522,
+    0.562
+   ],
+   "native_box_centre": [
+    0.481,
+    0.5155000000000001
+   ]
+  }
+ ],
+ "asked_pair_distances_m": [
+  {
+   "a": "player standing on the right",
+   "b": "player diving to the base",
+   "distance_m": 2.5
+  },
+  {
+   "a": "player standing on the right",
+   "b": "player in the background",
+   "distance_m": 21.0
+  }
+ ],
+ "answer_complete": false,
+ "raw_answer": "```json\n{\n  \"objects\": [\n    {\n      \"name\": \"the player standing on the right\",\n      \"x\": 65.0,\n      \"y\": 58.0,\n      \"depth_m\": 4.5,\n      \"size_m\": 1.85\n    },\n    {\n      \"name\": \"the player diving to the base\",\n      \"x\": 30.0,\n      \"y\": 62.0,\n      \"depth_m\": 4.8,\n      \"size_m\": 1.8\n    },\n    {\n      \"name\": \"the player in the background\",\n      \"x\": 21.0,\n      \"y\": 23.0,\n      \"depth_m\": 25.0,\n      \"size_m\": 1.8\n    },\n    {\n      \"name\": \"the standing player's glove\",\n      \"x\": 48.0,\n      \"y\": 51.0,\n      \"depth_m\": 4.2,\n      \"size_m\": 0.35\n    }\n  ],\n  \"pairs\": [\n    {\n      \"a\": \"the player standing on the right\",\n      \"b\": \"the player diving to the base\",\n      \"distance_m\": 2.5\n    },\n    {\n      \"a\": \"the player standing on the right\",\n      \"b\": \"the player in the background\",\n      \"distance_m\": 21.0\n    },\n    {\n      \"a\": \"the player standing on the right\",\n      \"b\": \"the standing player's glove\",\n      \"distance",
+ "raw_native_boxes": "```json\n[\n\t{\"label\": \"player standing on the right\", \"bbox_2d\": [442, 294, 805, 915]},\n\t{\"label\": \"player diving to the base\", \"bbox_2d\": [78, 419, 528, 856]},\n\t{\"label\": \"player in the background\", \"bbox_2d\": [185, 131, 240, 338]},\n\t{\"label\": \"standing player's glove\", \"bbox_2d\": [440, 469, 522, 562]}\n]\n```"
+}
