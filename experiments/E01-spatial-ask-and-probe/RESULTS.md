@@ -171,7 +171,7 @@ SpatialAxiom against its base on calm frames: depth -0.111 [-0.149, -0.071] (`ta
 ![Per-patch depth](../../docs/assets/fig5_dense_Qwen3.8-27B.png)
 
 Every merged image token of the NYU test scenes, random-projected to 256 dimensions. Abs-rel, lower is better
-(`data/dense_Qwen3.8-27B.json` on the dataset):
+([data/dense_Qwen3.8-27B.json](data/dense_Qwen3.8-27B.json); also `probes/` on the dataset):
 
 | readout | abs-rel |
 |---|---|
