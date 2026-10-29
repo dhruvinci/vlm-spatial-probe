@@ -73,6 +73,7 @@ abs-rel 0.223). It fades through the language layers to 0.345 at the last one, c
 14. **The spoken-answer findings survive rewording.** Qwen3.8-27B's asked depth stays at the name prior (0.395 vs
     0.394, tables_e06.md:16). SpatialAxiom-9B still beats its base (0.244 vs 0.342; difference -0.097 [-0.136, -0.059],
     tables_e06.md:10).
-15. **Relations asked the other way round cost the base and older models up to 10 points** of balanced accuracy.
-    SpaceQwen2.5-VL-3B drops from 0.698 to 0.598; SpatialAxiom-9B does not move (0.926 vs 0.926)
-    (tables_e06.md:27,39).
+15. **Relations asked the other way round cost the base and older models balanced accuracy.**
+    - Test split: up to 10 points. SpaceQwen2.5-VL-3B drops from 0.698 to 0.598; SpatialAxiom-9B does not move (0.926
+      vs 0.926) (tables_e06.md:27,39).
+    - All items, streets included: up to 12.8 points, for Qwen2.5-VL-3B (tables_e06.md:44).

@@ -68,7 +68,8 @@ without the two-person dataset's MMA and grappling frames, and no verdict change
   - Joints: 68.6% within 5% of the box diagonal, vs ViTPose+'s 95.7%.
 - [E06](experiments/E06-prompt-robustness/): do the spoken answers hold under a second wording? (pre-registered).
   - **Yes.** Qwen3.8's depth stays at the name prior; SpatialAxiom still beats its base.
-  - The base and older models lose up to 10 points on relations asked the other way round.
+  - The base and older models lose up to 10 points on relations asked the other way round (test split; 12.8 for
+    Qwen2.5-VL-3B on all items).
 - [E03](experiments/E03-many-domain-decoder/): a decoder trained on one more scene type (synthetic indoor). Running; results to follow.
 - Plan, not run: [docs/PLAN_E03.md](docs/PLAN_E03.md). A decoder trained on many datasets, and the measures not yet
   covered: orientation and angles, surfaces, motion, counts.

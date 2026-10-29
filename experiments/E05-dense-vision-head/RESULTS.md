@@ -31,11 +31,12 @@
 - **The information is there, at coarse precision.** A trained head reads per-pixel depth from Qwen3.8's tower at
   0.186 abs-rel, twice MoGe-2's error. For a loose comparison, since the grain differs: E01's exploratory linear probe
   per 32-px token reached 0.223 at best in the tower and 0.345 at the last language layer.
+- **Training-set size limits the depth figure.** The depth head trained on 276 images, so 0.186 is what a small head
+  reads from the tower, not the most the tower holds.
 - **Joints are recoverable to about 7 in 10 within 5% of the body box,** against ViTPose's 96%.
 - **Both fall short of the specialists by a wide margin,** and both heads were trained and tested in-domain.
-- So the vision tower holds geometry a head can read, but not at the precision engagement measures need: joints to a
-  few pixels, depth to a few percent. The specialists remain the right measurement layer, and the VLM the right
-  reasoning layer.
+- So the vision tower holds dense depth and joint geometry a head can read, but at about half the specialists'
+  precision on both.
 
 ## Reproduce
 ```

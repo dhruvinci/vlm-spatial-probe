@@ -7,14 +7,15 @@ wording of the same questions?
 - Pre-registered ([PREREG.md](PREREG.md)).
 - All five models, E01's 1,385 images.
 - A second JSON ask with the same schema, and the relation questions asked the other way round (same truth).
-- Cost: part of the shared E03/E06 rental ($3.47 in all).
+- Cost: part of the shared E03/E06 rental ($3.59 in all, as settled).
 
 **Results** (calm frames; abs-rel, lower is better):
 - Qwen3.8-27B's asked depth stays at the name prior: 0.395 vs 0.394.
 - SpatialAxiom-9B still beats its base: 0.244 vs 0.342, difference -0.097 [-0.136, -0.059].
 - **Both pre-registered criteria hold.**
-- SpatialAxiom's relations do not move (0.926 vs 0.926). The base and older models lose up to 10 points when a relation
-  is asked the other way round.
+- SpatialAxiom's relations do not move (0.926 vs 0.926).
+- The base and older models lose points when a relation is asked the other way round: up to 10 on the test split, and
+  12.8 for Qwen2.5-VL-3B on all items.
 
 **Verdict.** The spoken-answer findings are robust to the wording. The relation answers of the base and older models
 are not.

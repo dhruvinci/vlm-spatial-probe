@@ -16,7 +16,7 @@ def main():
     a = ap.parse_args()
     R = json.loads(Path(a.results).read_text())
     plt = plt_setup()
-    fig, axes = plt.subplots(1, 3, figsize=(12.5, 3.3), gridspec_kw={'wspace': 0.6})
+    fig, axes = plt.subplots(1, 3, figsize=(12.5, 3.6), gridspec_kw={'wspace': 0.6})
     panels = [('Depth per pixel, NYU test scenes\nabs-rel (lower is better)', [('head on Qwen3.8 tower', R['depth_head']['abs_rel'], R['depth_head']['abs_rel_ci'], ORANGE),
                                                                                  ('MoGe-2', R['depth_moge2']['abs_rel'], R['depth_moge2']['abs_rel_ci'], AQUA)]),
               ('Joints, COCO val people\nPCK at 5% of the box diagonal (higher is better)', [('head on Qwen3.8 tower', R['joints_head_pck5']['value'], R['joints_head_pck5']['ci'], ORANGE),
@@ -30,8 +30,8 @@ def main():
             ax.text(c[1], y, f'  {v:.3f}', va='center', fontsize=8, color=INK2)
         ax.set_yticks(range(len(rows))); ax.set_yticklabels([r[0] for r in rows[::-1]], fontsize=8)
         ax.set_title(title, loc='left', fontsize=9.5); ax.grid(axis='y', visible=False)
-        ax.set_xlim(0, max(r[2][1] for r in rows) * 1.3)
-    fig.suptitle('E05: trained heads on Qwen3.8-27B\'s frozen vision tower against the specialists (95% intervals)', x=0.05, ha='left',
+        ax.set_xlim(0, 1.0 if 'PCK' in title else max(r[2][1] for r in rows) * 1.3)
+    fig.suptitle('E05: trained heads on Qwen3.8-27B\'s frozen vision tower against the specialists (95% intervals)', x=0.05, y=1.08, ha='left',
                  fontsize=11, fontweight='bold', color=INK)
     fig.savefig(Path(a.out)/'fig8_dense_head.png', dpi=130, bbox_inches='tight')
     print('saved fig8_dense_head.png')

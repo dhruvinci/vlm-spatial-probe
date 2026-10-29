@@ -2,7 +2,7 @@
 
 **Status.**
 - Pre-registered ([PREREG.md](PREREG.md), pushed as 0072699 before the run).
-- Run on the shared E03/E06 rental: RTX PRO 6000, 2.09 h in all, $3.47; see `docs/SPEND.md`.
+- Run on the shared E03/E06 rental: RTX PRO 6000, 2.09 h in all, $3.59 as settled; see `docs/SPEND.md`.
 - All five models, E01's 1,385 images.
 - Every number is printed by `src/report_e06.py` into [data/tables_e06.md](data/tables_e06.md), cited as
   `tables_e06.md:line`.
@@ -31,13 +31,16 @@
   - relations stay at 0.926 (38 of 1,313 answers flipped, in both directions) (`tables_e06.md:22-27`).
 - **The base and older models are more sensitive:**
   - Qwen3.5-9B's street depth worsens from 0.359 to 0.519 (`tables_e06.md:29`).
-  - Relations, asked the other way round, drop for Qwen3.5-9B (-0.024), Qwen2.5-VL-3B (-0.075) and SpaceQwen2.5-VL-3B
-    (-0.100, from 0.698 to 0.598) (`tables_e06.md:33,39,45`).
+  - Relations asked the other way round drop on the test split for Qwen3.5-9B (-0.024), Qwen2.5-VL-3B (-0.075) and
+    SpaceQwen2.5-VL-3B (-0.100, from 0.698 to 0.598) (`tables_e06.md:33,39,45`).
+  - On all relation items, held-out streets included, Qwen2.5-VL-3B drops 12.8 points (0.784 to 0.656,
+    `tables_e06.md:44`).
 
 ## What this means
 - **The paper's spoken-answer claims are not an artefact of one phrasing.**
   - The general models' depth stays at name-prior level.
   - The spatial fine-tune's advantage over its base holds.
   - The spatial fine-tune is also the most stable under rewording.
-- **The relation answers of the base and older models depend on how the question is put.** The SpatialVLM-recipe
-  model loses 10 points of balanced accuracy when the same relation is asked the other way round.
+- **The relation answers of the base and older models depend on how the question is put.** Asked the other way
+  round, the SpatialVLM-recipe model loses 10 points of balanced accuracy on the test split; Qwen2.5-VL-3B loses 12.8
+  points on all items.

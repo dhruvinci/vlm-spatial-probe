@@ -1,7 +1,7 @@
 # E05 — Can a head on Qwen3.8's own vision tower measure like the specialists?
 
-**Objective.** E01 and E02 show coarse geometry on the language side. Is fine geometry available from the vision
-tower to a trained head, at the precision engagement measures need?
+**Objective.** E01 and E02 show coarse geometry on the language side. Can a trained head on the vision tower read
+dense depth and people's joints as precisely as the specialist models do?
 
 **Setup.**
 - Pre-registered ([PREREG.md](PREREG.md)).
@@ -22,9 +22,7 @@ tower to a trained head, at the precision engagement measures need?
 
 Both fail the pre-registered bar: depth by 1.94x, joints by 27 points.
 
-**Verdict.** The tower holds geometry a head can read, at about half the specialists' precision. Not enough for joint-
-or centimetre-level engagement measures.
-
-**Next.** Keep the specialists as the measurement layer, with the VLM reasoning over their numbers.
+**Verdict.** The tower holds dense depth and joint geometry a head can read, at about half the specialists'
+precision. The depth head trained on 276 images, so this is what a small head reads, not the most the tower holds.
 
 Details: [RESULTS.md](RESULTS.md). Code: `src/dense_head.py`, `src/make_figures_e05.py`.
