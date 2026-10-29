@@ -43,6 +43,16 @@ REL_Q = {'closer': 'Is the {a} closer to the camera than the {b}? Answer yes or 
          'above': 'In the image, is the {a} higher up than the {b}? Answer yes or no.',
          'bigger': 'In reality, is the {a} bigger than the {b}? Answer yes or no.'}
 NAMING_Q = 'Is there a {name} in this image? Answer yes or no.'
+# E06: a second wording of the same questions (same JSON schema; relations asked the other way round, same truth)
+ASK_Q2 = ('Look at the listed objects. For each one, say how far it is from the camera in metres, how big it is (its '
+          'longest side, in metres), and where its centre is in the image as a percentage of the width and height (0 to '
+          '100, from the top-left). Then give the distance in metres between every pair. Reply with JSON only, in this '
+          'form: {"objects": [{"name": <name>, "x": <number>, "y": <number>, "depth_m": <number>, "size_m": <number>}], '
+          '"pairs": [{"a": <name>, "b": <name>, "distance_m": <number>}]}')
+REL_Q2 = {'closer': 'Is the {b} farther from the camera than the {a}? Answer yes or no.',
+          'left_of': 'In the image, is the {b} to the right of the {a}? Answer yes or no.',
+          'above': 'In the image, is the {b} lower down than the {a}? Answer yes or no.',
+          'bigger': 'In reality, is the {b} smaller than the {a}? Answer yes or no.'}
 COCO80 = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light',
           'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant',
           'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard',
@@ -294,6 +304,7 @@ def main():
     ap.add_argument('--batch', type=int, default=16)
     ap.add_argument('--gen-batch', type=int, default=32)
     ap.add_argument('--limit', type=int, default=0, help='first N images of each domain only (smoke tests)')
+    ap.add_argument('--ask-domains', default='', help='comma list: generate answers only for these domains (E03)')
     a = ap.parse_args()
     data, out = Path(a.data), Path(a.out)/a.name
     out.mkdir(parents=True, exist_ok=True)
@@ -381,12 +392,13 @@ def main():
         save_meta()
 
     # ---------------------------------------------------------------- generated answers
-    for part, q, max_new in (('ask', ASK_Q, 384), ('ground', GROUND_Q, 256)):
+    ask_rows = [r for r in order if not a.ask_domains or r['domain'] in a.ask_domains.split(',')]
+    for part, q, max_new in (('ask', ASK_Q, 384), ('ground', GROUND_Q, 256), ('ask2', ASK_Q2, 384)):
         if part not in parts or (out/f'{part}.jsonl').exists():
             continue
         t = time.time()
         recs = []
-        for bi, chunk in enumerate(batches(order, a.gen_batch)):
+        for bi, chunk in enumerate(batches(ask_rows, a.gen_batch)):
             texts = [R.chat(names_line(r['objects']) + '\n' + q) for r in chunk]
             ans = R.generate(texts, [load_image(data, r) for r in chunk], max_new)
             recs += [{'id': r['id'], 'names': [o['name'] for o in r['objects']], 'answer': s} for r, s in zip(chunk, ans)]
@@ -397,18 +409,25 @@ def main():
         save_meta()
 
     # ---------------------------------------------------------------- yes / no
-    if 'yesno' in parts and not (out/'yesno.jsonl').exists():
+    for ynpart in ('yesno', 'yesno2'):
+        if ynpart not in parts or (out/f'{ynpart}.jsonl').exists():
+            continue
         t = time.time()
         items = yesno_items(rows)
+        if ynpart == 'yesno2':                                  # same items, relations reworded (roles swapped, same truth)
+            items = [x for x in items if x['kind'] == 'relation']
+            for x in items:
+                byid_ = byid[x['id']]
+                x['text'] = REL_Q2[x['relation']].format(a=byid_['objects'][x['a']]['name'], b=byid_['objects'][x['b']]['name'])
         items.sort(key=lambda x: (byid[x['id']]['size'][1] / byid[x['id']]['size'][0], x['id']))
         recs = []
         for bi, chunk in enumerate(batches(items, a.batch)):
             sc = R.yesno([R.chat(x['text']) for x in chunk], [load_image(data, byid[x['id']]) for x in chunk])
             recs += [{**x, **s} for x, s in zip(chunk, sc)]
             if bi % 20 == 0:
-                print('yesno', bi * a.batch, '/', len(items), round(time.time() - t), 's', flush=True)
-        (out/'yesno.jsonl').write_text('\n'.join(json.dumps(x) for x in recs))
-        timings['yesno'] = round(time.time() - t, 1)
+                print(ynpart, bi * a.batch, '/', len(items), round(time.time() - t), 's', flush=True)
+        (out/f'{ynpart}.jsonl').write_text('\n'.join(json.dumps(x) for x in recs))
+        timings[ynpart] = round(time.time() - t, 1)
         save_meta()
     meta['total_s'] = round(time.time() - t0, 1)
     save_meta()

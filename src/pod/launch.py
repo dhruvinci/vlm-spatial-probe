@@ -149,9 +149,11 @@ def fetch(st, k, name, cache, streams=4):
 
 
 def fetch_data(st, k, cache):
-    """Logs, the layout audits, and the dataset files built on the pod (NYU needs h5py)."""
-    p = subprocess.run(' '.join(ssh_base(st, k)) + f" 'cd {REMOTE} && tar cf - logs out/E00_audit_*.json data/dataset.json data/nyu.json "
-                       f"data/nyu_dense.npz data/images/indoor' | tar xf - -C {cache}", shell=True, capture_output=True, text=True, timeout=1800)
+    """Logs, the layout audits, and the dataset files built on the pod (whichever exist)."""
+    paths = ('logs out/E00_audit_*.json data/dataset.json data/nyu.json data/nyu_dense.npz data/images/indoor '
+             'data_e03/dataset.json data_e03/hypersim_checks.json data_e03/images')
+    p = subprocess.run(' '.join(ssh_base(st, k)) + f" 'cd {REMOTE} && tar cf - $(ls -d {paths} 2>/dev/null)' | tar xf - -C {cache}",
+                       shell=True, capture_output=True, text=True, timeout=1800)
     print('fetched logs and data', p.returncode, p.stderr[-300:], flush=True)
 
 

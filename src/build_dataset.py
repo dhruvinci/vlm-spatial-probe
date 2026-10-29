@@ -28,6 +28,8 @@ entirely held out (a domain the probes never train on). Images are stored with t
   python src/build_dataset.py kitti_classes --src DIR --out DATA   (adds every labelled class per frame, for the naming check)
   python src/build_dataset.py figure1 --src DIR --out DATA     (Figure 1: the baseball photo, COCO train2017 246285)
   python src/build_dataset.py finish --out DATA                (splits, relations, pairs -> DATA/dataset.json)
+E03 (more data): nyu --n 2000, kitti --n 1000, hypersim --src HYPERSIM_META, h4d_more, then
+  python src/build_dataset.py finish_e03 --out DATA_E03 --exclude DATA/dataset.json
 """
 import argparse
 import io
@@ -406,6 +408,16 @@ def finish(out):
     for r in rows:
         if r['domain'] == 'street':
             r['split'] = 'heldout'
+    add_pairs(rows)
+    (out/'dataset.json').write_text(json.dumps(rows, indent=0))
+    from collections import Counter
+    print('images', Counter((r['domain'], r['split']) for r in rows))
+    print('objects', sum(len(r['objects']) for r in rows), 'pairs', sum(len(r['pairs']) for r in rows))
+    print('relations', Counter(k for r in rows for p in r['pairs'] for k in p['relations']))
+
+
+def add_pairs(rows):
+    for r in rows:
         pairs = []
         ob = r['objects']
         for a in range(len(ob)):
@@ -425,18 +437,136 @@ def finish(out):
                     p['distance_m'] = float(np.linalg.norm(np.subtract(A['centre_m'], B['centre_m'])))
                 pairs.append(p)
         r['pairs'] = pairs
+
+
+# ------------------------------------------------------------------ E03: more data (see experiments/E03-many-domain-decoder/PREREG.md)
+HYPERSIM_URL = 'https://docs-assets.developer.apple.com/ml-research/datasets/hypersim/v1/scenes/{}.zip'
+NYU40 = ['wall', 'floor', 'cabinet', 'bed', 'chair', 'sofa', 'table', 'door', 'window', 'bookshelf', 'picture', 'counter',
+         'blinds', 'desk', 'shelves', 'curtain', 'dresser', 'pillow', 'mirror', 'floor mat', 'clothes', 'ceiling', 'books',
+         'refrigerator', 'television', 'paper', 'towel', 'shower curtain', 'box', 'whiteboard', 'person', 'night stand',
+         'toilet', 'sink', 'lamp', 'bathtub', 'bag', 'otherstructure', 'otherfurniture', 'otherprop']
+HYPERSIM_SKIP = {'wall', 'floor', 'ceiling', 'otherstructure', 'otherfurniture', 'otherprop', 'floor mat', 'clothes', 'paper',
+                 'books', 'person'}
+HYPERSIM_SCENES, HYPERSIM_FRAMES = 50, 20
+
+
+def build_hypersim(src, out):
+    """Hypersim (Roberts et al., ICCV 2021; CC BY-SA 3.0), read by byte range from Apple's scene zips. src holds the
+    toolkit's metadata_images_split_scene_v1.csv and metadata_camera_parameters.csv. Per pixel, camera-space 3D from
+    position.hdf5 and the keyframe pose (camera looks along -z, y up; converted to x right, y down, z forward), in metres
+    via the scene's meters_scale. Checked per frame against depth_meters (Euclidean distance)."""
+    import csv
+    import h5py
+    split = [r for r in csv.DictReader(open(Path(src)/'metadata_images_split_scene_v1.csv')) if r['included_in_public_release'] == 'True' and r['camera_name'] == 'cam_00']
+    scale = {r['scene_name']: float(r['settings_units_info_meters_scale']) for r in csv.DictReader(open(Path(src)/'metadata_camera_parameters.csv'))}
+    frames = {}
+    for r in split:
+        frames.setdefault(r['scene_name'], []).append(int(r['frame_id']))
+    scenes = sorted(s for s, f in frames.items() if len(f) >= HYPERSIM_FRAMES and s in scale)
+    random.Random(SEED).shuffle(scenes)
+    rows, checks = [], []
+    rd = lambda z, n: h5py.File(io.BytesIO(z.read(n)), 'r')['dataset'][()]
+    for scene in scenes[:HYPERSIM_SCENES]:
+        z = zipfile.ZipFile(io.BufferedReader(HTTPRangeFile(HYPERSIM_URL.format(scene)), 1 << 20))
+        base = f'{scene}/images/scene_cam_00_'
+        kpos = rd(z, f'{scene}/_detail/cam_00/camera_keyframe_positions.hdf5')
+        kori = rd(z, f'{scene}/_detail/cam_00/camera_keyframe_orientations.hdf5')
+        fr = sorted(frames[scene])
+        for f in [fr[i] for i in np.linspace(0, len(fr) - 1, HYPERSIM_FRAMES).round().astype(int)]:
+            try:
+                img = Image.open(io.BytesIO(z.read(f'{base}final_preview/frame.{f:04d}.tonemap.jpg')))
+                sem = rd(z, f'{base}geometry_hdf5/frame.{f:04d}.semantic.hdf5'); ins = rd(z, f'{base}geometry_hdf5/frame.{f:04d}.semantic_instance.hdf5')
+                pos = rd(z, f'{base}geometry_hdf5/frame.{f:04d}.position.hdf5').astype(np.float64)
+                dm = rd(z, f'{base}geometry_hdf5/frame.{f:04d}.depth_meters.hdf5').astype(np.float64)
+            except KeyError:
+                continue
+            pc = (pos - kpos[f]) @ kori[f] * scale[scene]                  # camera frame (R is world-from-camera)
+            P = np.stack([pc[..., 0], -pc[..., 1], -pc[..., 2]], -1)       # x right, y down, z forward
+            ok = np.isfinite(P).all(-1) & np.isfinite(dm)
+            if ok.mean() < 0.5:
+                continue
+            ratio = float(np.median(np.linalg.norm(P[ok], axis=1) / dm[ok])); front = float((P[ok][:, 2] > 0).mean())
+            checks.append({'scene': scene, 'frame': f, 'norm_over_depth_meters': ratio, 'share_in_front': front})
+            H, W = sem.shape
+            objs = []
+            for c in np.unique(sem):
+                if c < 1 or c > 40 or NYU40[c - 1] in HYPERSIM_SKIP:
+                    continue
+                ids = [k for k in np.unique(ins[sem == c]) if k >= 0]
+                if len(ids) != 1:
+                    continue
+                m = (sem == c) & (ins == ids[0])
+                if m.sum() < 0.01 * H * W or (m & ok).sum() < 0.8 * m.sum():
+                    continue
+                X = P[m & ok]; zz = X[:, 2]
+                if (zz <= 0).mean() > 0.01:
+                    continue
+                Xc = X - X.mean(0); ax = np.linalg.svd(Xc[::max(1, len(Xc) // 4000)], full_matrices=False)[2][0]
+                proj = Xc @ ax
+                ys, xs = np.nonzero(m)
+                objs.append({'name': NYU40[c - 1], 'xy': [xs.mean() / W, ys.mean() / H],
+                             'box': [xs.min() / W, ys.min() / H, (xs.max() + 1) / W, (ys.max() + 1) / H],
+                             'depth_m': float(np.median(zz)), 'centre_m': np.median(X, 0).tolist(),
+                             'size_m': float(np.percentile(proj, 95) - np.percentile(proj, 5)), 'area': int(m.sum())})
+            if len(objs) < 2:
+                continue
+            objs = sorted(objs, key=lambda o: -o['area'])[:3]
+            p = out/'images'/'indoor_synth'/f'hypersim_{scene}_{f:04d}.jpg'
+            save_image(img, p)
+            rows.append({'id': f'hypersim_{scene}_{f}', 'domain': 'indoor_synth', 'image': str(p.relative_to(out)), 'size': [W, H],
+                         'scene': scene, 'source': {'dataset': 'Hypersim', 'scene': scene, 'camera': 'cam_00', 'frame': f,
+                         'licence': 'CC BY-SA 3.0', 'licence_url': 'https://creativecommons.org/licenses/by-sa/3.0/'}, 'objects': objs})
+        print(scene, len(rows), flush=True)
+    (out/'hypersim.json').write_text(json.dumps(rows))
+    (out/'hypersim_checks.json').write_text(json.dumps(checks))
+    r = np.array([c['norm_over_depth_meters'] for c in checks]); fr_ = np.array([c['share_in_front'] for c in checks])
+    print('hypersim', len(rows), 'frames; median |P|/depth_meters', round(float(np.median(r)), 4), 'min share in front', round(float(fr_.min()), 4))
+
+
+def build_h4d_more(src, out):
+    """More Harmony4D frames from the calm sequences (three times E01's per-sequence count, frames E01 did not use)."""
+    global H4D_PLAN
+    keep = H4D_PLAN
+    H4D_PLAN = {k: v * 3 for k, v in keep.items() if k in ('01_hugging', '05_sword2', '08_ballroom2', '09_karate')}
+    try:
+        build_h4d(src, out)
+    finally:
+        H4D_PLAN = keep
+    (out/'h4d.json').rename(out/'h4d_more.json')
+
+
+def finish_e03(out, exclude):
+    """New rows only (ids not in E01's dataset.json): NYU and KITTI supersets, Hypersim, more calm Harmony4D."""
+    old = {r['id'] for r in json.loads(Path(exclude).read_text())}
+    rows = []
+    for n in ('nyu', 'kitti', 'hypersim', 'h4d_more'):
+        f = out/f'{n}.json'
+        if f.exists():
+            rows += [r for r in json.loads(f.read_text()) if r['id'] not in old]
+    for r in rows:
+        r['split'] = 'e03'
+    add_pairs(rows)
     (out/'dataset.json').write_text(json.dumps(rows, indent=0))
     from collections import Counter
-    print('images', Counter((r['domain'], r['split']) for r in rows))
-    print('objects', sum(len(r['objects']) for r in rows), 'pairs', sum(len(r['pairs']) for r in rows))
-    print('relations', Counter(k for r in rows for p in r['pairs'] for k in p['relations']))
+    print('E03 new images', Counter(r['domain'] for r in rows), 'objects', sum(len(r['objects']) for r in rows))
 
 
 if __name__ == '__main__':
     ap = argparse.ArgumentParser()
-    ap.add_argument('part', choices=['coco', 'kitti', 'kitti_classes', 'nyu', 'h4d', 'figure1', 'finish'])
+    ap.add_argument('part', choices=['coco', 'kitti', 'kitti_classes', 'nyu', 'h4d', 'figure1', 'finish',
+                                     'hypersim', 'h4d_more', 'finish_e03'])
     ap.add_argument('--src', default='')
     ap.add_argument('--out', required=True)
+    ap.add_argument('--n', type=int, default=0, help='images per domain (default 400; E03 builds supersets)')
+    ap.add_argument('--exclude', default='', help='finish_e03: E01 dataset.json whose ids are left out')
     a = ap.parse_args()
+    if a.n:
+        N_PER_DOMAIN = a.n
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
-    {'coco': build_coco, 'kitti': build_kitti, 'kitti_classes': kitti_classes, 'nyu': build_nyu, 'h4d': build_h4d, 'figure1': figure1}.get(a.part, lambda s, o: finish(o))(a.src, out) if a.part != 'finish' else finish(out)
+    if a.part == 'finish':
+        finish(out)
+    elif a.part == 'finish_e03':
+        finish_e03(out, a.exclude)
+    else:
+        {'coco': build_coco, 'kitti': build_kitti, 'kitti_classes': kitti_classes, 'nyu': build_nyu, 'h4d': build_h4d,
+         'figure1': figure1, 'hypersim': build_hypersim, 'h4d_more': build_h4d_more}[a.part](a.src, out)
