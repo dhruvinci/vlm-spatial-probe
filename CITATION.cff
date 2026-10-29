@@ -1,6 +1,6 @@
 cff-version: 1.2.0
 message: "If you use this work, please cite it."
-title: "Naming isn't locating: probing where spatial information lives inside vision-language models"
+title: "Blindsight: Vision-Language Models Know More About Space Than They Say"
 authors:
   - family-names: Chakravarthi
     given-names: Dhruva

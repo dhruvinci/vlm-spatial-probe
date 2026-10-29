@@ -1,4 +1,4 @@
-# Naming isn't locating: a probe inside the spatial information of vision-language models
+# Blindsight: Vision-Language Models Know More About Space Than They Say
 
 When a vision-language model is asked how far away something is, is the answer a measurement? And where inside the
 model does the measurement live? This repository asks five open models and then probes them layer by layer. The probes
