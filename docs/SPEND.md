@@ -28,3 +28,27 @@ What the time went on (from `logs/run_all.log` and each model's `meta.json` on t
 
 The pod was terminated by `src/pod/launch.py watch` once every model had been fetched, and the empty pod list was
 verified through the API.
+
+## Second rental: E03 and E06 (2026-10-29)
+| item | value |
+|---|---|
+| pod | `i8z2otkeq1lt2z`, community cloud, 1x RTX PRO 6000 Blackwell Workstation (96 GB), $1.69/h |
+| uptime | 2.09 h (04:32-06:37 UTC) |
+| account balance | $17.5386 before; $13.9462 after billing settled, with no pods and no volumes |
+| **spend** | **$3.59** (cap for this rental: $7) |
+
+What the time went on:
+- **E06 (second wording), all five models:** 27B 37 min; 9B 10-17 min each; 3B about 8 min each.
+- **E03 extraction:**
+  - SpatialAxiom-9B: 15 min.
+  - Qwen3.8-27B: 16 min, after a re-download. Its first attempt ran out of GPU memory because I had started
+    SpatialAxiom's E06 alongside it, and the run script then deleted the 27B weights. About 10 extra minutes.
+- **E03 data build:**
+  - KITTI by byte range.
+  - Hypersim by byte range: 50 scenes gave 465 frames with at least 2 qualifying objects.
+  - The NYU superset was dropped. The NYU server gave the pod 0.4 MB/s, and uploads to the pod ran at about
+    50 KB/s, so E03 uses E01's 400 NYU images.
+- **Idle:** about 15 minutes at the end, during a local power and network cut that stopped the watchdog. It was
+  restarted, fetched everything, and terminated the pod.
+
+**Paper 04 total, both rentals: $7.66** ($21.6038 → $13.9462).

@@ -62,6 +62,14 @@ without the two-person dataset's MMA and grappling frames, and no verdict change
     model's own answer and 0.10-0.23 for MoGe-2.
   - It passes the bar in 2 of 50 folds, both weak.
   - Within KITTI, the object word reads car orientation to about 10°.
+- [E05](experiments/E05-dense-vision-head/): can a trained head on Qwen3.8's own vision tower measure like the
+  specialists? (pre-registered; local, $0).
+  - **No.** Per-pixel depth: abs-rel 0.186 vs MoGe-2's 0.096.
+  - Joints: 68.6% within 5% of the box diagonal, vs ViTPose+'s 95.7%.
+- [E06](experiments/E06-prompt-robustness/): do the spoken answers hold under a second wording? (pre-registered).
+  - **Yes.** Qwen3.8's depth stays at the name prior; SpatialAxiom still beats its base.
+  - The base and older models lose up to 10 points on relations asked the other way round.
+- [E03](experiments/E03-many-domain-decoder/): a decoder trained on one more scene type (synthetic indoor). Running; results to follow.
 - Plan, not run: [docs/PLAN_E03.md](docs/PLAN_E03.md). A decoder trained on many datasets, and the measures not yet
   covered: orientation and angles, surfaces, motion, counts.
 

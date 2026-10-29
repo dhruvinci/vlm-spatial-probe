@@ -25,6 +25,11 @@ GROUPS = {                                   # name: (domains with truth, target
     'xy': (('people', 'indoor', 'two_people', 'street'), ('xy',)),
     'orient': (('street',), ('orient',)),    # within street only: 5 folds by image (not a transfer test)
 }
+GROUPS_E03 = {                               # E03: one more domain (synthetic indoor); calm frames only
+    'geo': (('indoor', 'indoor_synth', 'two_people', 'street'), ('depth', 'centre')),
+    'size': (('indoor', 'indoor_synth', 'street'), ('size',)),
+    'xy': (('people', 'indoor', 'indoor_synth', 'two_people', 'street'), ('xy',)),
+}
 
 
 def records(rows, orient):
@@ -68,8 +73,8 @@ def errors(t, pred, recs, idx):
     return np.degrees(np.abs(np.angle(np.exp(1j * (p - a)))))
 
 
-def folds_for(group, recs, ids_fold):
-    doms, _ = GROUPS[group]
+def folds_for(group, recs, ids_fold, groups=None):
+    doms, _ = (groups or GROUPS)[group]
     if group == 'orient':
         return [(f'street_fold{f}', [d for d in doms], f) for f in range(5)]
     return [(h, [d for d in doms if d != h], None) for h in doms]
@@ -114,38 +119,61 @@ def main():
     ap.add_argument('--cache', required=True)
     ap.add_argument('--model', required=True)
     ap.add_argument('--device', default='cuda' if torch.cuda.is_available() else 'cpu')
+    ap.add_argument('--e03', default='', help='E03: the E03 cache root (data/dataset.json, out/e03_<model>); calm frames only')
     a = ap.parse_args()
     cache = Path(a.cache); dev = a.device
     rows = [r for r in json.loads((cache/'data/dataset.json').read_text()) if r['domain'] != 'figure']
+    groups = GROUPS
+    if a.e03:
+        rows = [r for r in rows if r.get('activity') not in ('mma', 'grappling')]
+        rows2 = json.loads((Path(a.e03)/'data/dataset.json').read_text())
+        groups = GROUPS_E03
     orient = json.loads((cache/'e02_orientation.json').read_text())['objects']
-    recs = records(rows, orient)
+    recs = records(rows, orient) + (records(rows2, {}) if a.e03 else [])
+    n1 = len(records(rows, orient))
     mdir = cache/'out'/a.model
     oidx = {tuple(o): j for j, o in enumerate(json.loads((mdir/'objects.json').read_text()))}
-    sel = np.array([oidx[(o['id'], o['k'])] for o in recs])
+    sel = np.array([oidx[(o['id'], o['k'])] for o in recs[:n1]])
+    if a.e03:
+        mdir2 = Path(a.e03)/'out'/f'e03_{a.model}'
+        oidx2 = {tuple(o): j for j, o in enumerate(json.loads((mdir2/'objects.json').read_text()))}
+        sel2 = np.array([oidx2[(o['id'], o['k'])] for o in recs[n1:]])
     meta = json.loads((mdir/'meta.json').read_text())
     n_lm = meta['n_lm_layers']
     ids = sorted({o['id'] for o in recs})
     ids_fold = dict(zip(ids, np.random.default_rng(SEED).integers(0, 5, len(ids))))
-    feats = {n: np.load(mdir/f'{p}_{q}.npy', mmap_mode='r') for n, (p, q) in
-             {'vis': ('feat', 'vis'), 'lmimg': ('feat', 'lmimg'), 'word': ('feat', 'word'), 'word_noimg': ('noimg', 'word'),
-              'word_mis': ('mis', 'word')}.items()}
+    srcs = {'vis': ('feat', 'vis'), 'lmimg': ('feat', 'lmimg'), 'word': ('feat', 'word'), 'word_noimg': ('noimg', 'word'),
+            'word_mis': ('mis', 'word')}
+    feats = {n: np.load(mdir/f'{p}_{q}.npy', mmap_mode='r') for n, (p, q) in srcs.items() if (mdir/f'{p}_{q}.npy').exists()}
+    feats2 = {n: np.load(mdir2/f'{p}_{q}.npy', mmap_mode='r') for n, (p, q) in srcs.items() if (mdir2/f'{p}_{q}.npy').exists()} if a.e03 else {}
+    if a.e03:
+        feats = {n: v for n, v in feats.items() if n in feats2}
+
+    def feat_at(name, l):
+        X = f32(feats[name][sel, l])
+        return np.concatenate([X, f32(feats2[name][sel2, l])]) if a.e03 else X
     fam = {'V': ('vis', list(range(meta['n_vis_layers']))), 'L_img': ('lmimg', list(range(int(np.ceil(0.75 * (n_lm - 1))), n_lm))),
            'L_img_any': ('lmimg', list(range(n_lm))), 'W': ('word', list(range(1, n_lm)))}
     t0 = time.time()
     # ---- every fold's split and inner folds
     plan = {}
-    for g, (doms, tg) in GROUPS.items():
+    for g, (doms, tg) in groups.items():
         Y = np.concatenate([targets(recs, t) for t in tg], 1)
         ok = ~np.isnan(Y).any(1)
-        for held, train_doms, f5 in folds_for(g, recs, ids_fold):
+        for held, train_doms, f5 in folds_for(g, recs, ids_fold, groups):
             tr, te, inner = split(g, recs, ok, held, train_doms, f5, ids_fold)
             plan[(g, held)] = {'Y': Y, 'tr': tr, 'te': te, 'inner': inner, 'targets': tg,
                                'cols': np.cumsum([0] + [targets(recs[:1], t).shape[1] for t in tg])}
     # ---- inner scores for every (readout, layer, fold, target, alpha)
     inner_scores = {}
+    sweep_file = (Path(a.e03) if a.e03 else cache)/f"{'e03' if a.e03 else 'e02'}_{a.model}.sweep.json"
+    if sweep_file.exists():
+        inner_scores = {tuple(json.loads(k)): v for k, v in json.loads(sweep_file.read_text()).items()}
     for name in ('vis', 'lmimg', 'word'):
         for l in range(feats[name].shape[1]):
-            X = f32(feats[name][sel, l])
+            if all((name, l, key, t) in inner_scores for key, P in plan.items() for t in P['targets']):
+                continue
+            X = feat_at(name, l)
             for key, P in plan.items():
                 train_mask = np.zeros(len(recs), bool); train_mask[P['tr']] = True
                 kr = KRidge(gram(X, train_mask, dev), dev)
@@ -159,6 +187,7 @@ def main():
                 for t in P['targets']:
                     inner_scores[(name, l, key, t)] = (sc[t] / n).tolist()
             print(a.model, name, l, round(time.time() - t0), 's', flush=True)
+            sweep_file.write_text(json.dumps({json.dumps([k[0], k[1], list(k[2]), k[3]]): v for k, v in inner_scores.items()}))
     # ---- choose layer + alpha per family, refit, MLP, controls
     out = {'model': a.model, 'records': [{k: o[k] for k in ('id', 'k', 'domain', 'activity', 'name')} for o in recs], 'folds': {}}
 
@@ -186,7 +215,7 @@ def main():
             for f, (name, layers) in fam.items():
                 best = min(((l, j) for l in layers for j in range(len(ALPHAS))), key=lambda lj: inner_scores[(name, lj[0], key, t)][lj[1]])
                 l, j = best
-                X = f32(feats[name][sel, l])
+                X = feat_at(name, l)
                 rp, _ = ridge_fixed(X, P, t, alpha_from=ALPHAS[j])
                 rec = {'layer': int(l), 'alpha': ALPHAS[j], 'inner_ridge': inner_scores[(name, l, key, t)][j], 'ridge': rp.tolist()}
                 if f in ('V', 'L_img', 'W'):
@@ -200,9 +229,11 @@ def main():
             lw = T['W']['layer']
             ctrl = {}
             for cname in ('word_noimg', 'word_mis'):
-                p_, al = ridge_fixed(f32(feats[cname][sel, lw]), P, t)
+                if cname not in feats:
+                    continue
+                p_, al = ridge_fixed(feat_at(cname, lw), P, t)
                 ctrl[cname] = {'alpha': al, 'pred': p_.tolist()}
-            Xw = f32(feats['word'][sel, lw])
+            Xw = feat_at('word', lw)
             sh = []
             for s in range(5):
                 gg = np.random.default_rng(SEED + 1 + s)
@@ -215,8 +246,9 @@ def main():
             F['targets'][t] = T
             print(a.model, key, t, {f: (T[f]['layer'], T[f].get('head')) for f in fam}, round(time.time() - t0), 's', flush=True)
         out['folds'][f'{g}|{held}'] = F
-    (cache/f'e02_{a.model}.json').write_text(json.dumps(out))
-    print('saved', cache/f'e02_{a.model}.json', round(time.time() - t0), 's')
+    name = f'e03_{a.model}.json' if a.e03 else f'e02_{a.model}.json'
+    (Path(a.e03) if a.e03 else cache).joinpath(name).write_text(json.dumps(out))
+    print('saved', name, round(time.time() - t0), 's')
 
 
 if __name__ == '__main__':

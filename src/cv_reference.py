@@ -101,7 +101,7 @@ def main():
     elif a.part == 'rfdetr':
         res = run_rfdetr(rows, data, a.weights)
     else:                                                    # E02: indoor and street with the fixed class map
-        res = run_rfdetr(rows, data, a.weights, domains=('indoor', 'street'), name_map=E02_MAP)
+        res = run_rfdetr(rows, data, a.weights, domains=('indoor', 'indoor_synth', 'street'), name_map=E02_MAP)
     Path(a.out).write_text(json.dumps(res))
     print('saved', a.out, len(res))
 

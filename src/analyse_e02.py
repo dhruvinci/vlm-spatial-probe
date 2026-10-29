@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 
 from analyse import COMBAT, Boot, ci, parse_ask, parse_ground, stat
-from transfer import GROUPS, errors, records
+from transfer import GROUPS, GROUPS_E03, errors, records
 
 MODELS = ['Qwen3.8-27B', 'SpatialAxiom-9B', 'Qwen3.5-9B', 'SpaceQwen2.5-VL-3B', 'Qwen2.5-VL-3B']
 MEASURES = [('depth', 'geo', 'abs-rel'), ('centre', 'geo', 'relative 3D error'), ('distance', 'geo', 'abs-rel'),
@@ -39,23 +39,34 @@ def main():
     ap.add_argument('--cache', required=True)
     ap.add_argument('--out', required=True)
     ap.add_argument('--models', default=','.join(MODELS))
+    ap.add_argument('--e03', default='', help='E03 cache root: score e03_<model>.json (calm frames; more domains)')
     a = ap.parse_args()
     MODELS[:] = a.models.split(',')
     cache = Path(a.cache)
     rows = [r for r in json.loads((cache/'data/dataset.json').read_text()) if r['domain'] != 'figure']
-    byid = {r['id']: r for r in rows}
     orient = json.loads((cache/'e02_orientation.json').read_text())['objects']
-    recs = records(rows, orient)
+    groups, measures, tag = GROUPS, MEASURES, 'e02'
+    if a.e03:
+        c3 = Path(a.e03)
+        rows = [r for r in rows if r.get('activity') not in COMBAT]
+        rows2 = json.loads((c3/'data/dataset.json').read_text())
+        groups, measures, tag = GROUPS_E03, [m for m in MEASURES if m[0] != 'orient'], 'e03'
+    recs = records(rows, orient) + (records(rows2, {}) if a.e03 else [])
+    rows = rows + (rows2 if a.e03 else [])
+    byid = {r['id']: r for r in rows}
     pos = {(o['id'], o['k']): i for i, o in enumerate(recs)}
     moge = json.loads((cache/'cv_moge.json').read_text())
     rfd = {**json.loads((cache/'cv_rfdetr.json').read_text()), **json.loads((cache/'cv_rfdetr_e02.json').read_text())}
+    if a.e03:
+        moge.update(json.loads((c3/'cv_moge.json').read_text()))
+        rfd.update(json.loads((c3/'cv_rfdetr.json').read_text())); rfd.update(json.loads((c3/'cv_rfdetr_e02.json').read_text()))
     R = {'models': {}}
-    lines = ['# E02 tables (printed by src/analyse_e02.py from results_e02.json)', '',
+    lines = [f'# {tag.upper()} tables (printed by src/analyse_e02.py from results_{tag}.json)', '',
              'Errors: lower is better. Intervals: 95% bootstrap over the held-out images. "calm" = without MMA and grappling frames.',
              'Pass = the decoder (object word, chosen head) beats the spoken answer (interval of spoken minus decoder above 0) '
              'and is within 1.5x the specialist\'s error on the same objects.', '']
     for model in MODELS:
-        p = cache/f'e02_{model}.json'
+        p = (Path(a.e03) if a.e03 else cache)/f'{tag}_{model}.json'
         if not p.exists():
             R['models'][model] = {'status': 'not run'}
             continue
@@ -63,12 +74,14 @@ def main():
         mdir = cache/'out'/model
         meta = json.loads((mdir/'meta.json').read_text())
         asks = {x['id']: parse_ask(x) for x in (json.loads(l) for l in (mdir/'ask.jsonl').read_text().splitlines())}
+        if a.e03 and (Path(a.e03)/'out'/f'e03_{model}'/'ask.jsonl').exists():
+            asks.update({x['id']: parse_ask(x) for x in (json.loads(l) for l in (Path(a.e03)/'out'/f'e03_{model}'/'ask.jsonl').read_text().splitlines())})
         grids = json.loads((mdir/'grids.json').read_text())
         ground = {x['id']: parse_ground(x, meta['kind'], grids.get(x['id'], [0, 0])) for x in
                   (json.loads(l) for l in (mdir/'ground.jsonl').read_text().splitlines())}
         M = {}
         lines += [f'## {model}', '']
-        for measure, g, unit in MEASURES:
+        for measure, g, unit in measures:
             fold_keys = [k for k in E['folds'] if k.startswith(g + '|')]
             for fk in fold_keys:
                 held = fk.split('|')[1]
@@ -76,7 +89,7 @@ def main():
                 te_all = np.array(F['test_idx'])
                 t = 'centre' if measure == 'distance' else measure
                 T = F['targets'][t]
-                train_doms = [d for d in GROUPS[g][0] if d != held] if g != 'orient' else ['street']
+                train_doms = [d for d in groups[g][0] if d != held] if g != 'orient' else ['street']
                 if g == 'orient':
                     tr = [i for i, o in enumerate(recs) if o['alpha'] is not None and i not in set(te_all.tolist())]
                 else:
@@ -90,7 +103,8 @@ def main():
                     preds = {'decoder (word)': sub(pick(T, 'W')), 'word, ridge': sub(T['W']['ridge']), 'word, MLP': sub(T['W']['mlp']),
                              'vision tower': sub(pick(T, 'V')), 'late image tokens': sub(pick(T, 'L_img')),
                              'image tokens, any layer': sub(T['L_img_any']['ridge']),
-                             'word, no image': sub(T['controls']['word_noimg']['pred']), 'word, mismatched image': sub(T['controls']['word_mis']['pred']),
+                             'word, no image': sub(T['controls']['word_noimg']['pred']),
+                             **({'word, mismatched image': sub(T['controls']['word_mis']['pred'])} if 'word_mis' in T['controls'] else {}),
                              'random features': sub(T['controls']['random']['pred']),
                              'name prior': name_prior(recs, tr, t, te)}
                     sh = [sub(s) for s in T['controls']['shuffled']['preds']]
@@ -223,12 +237,12 @@ def table_lines(model, M):
                 ('beats spoken (no specialist)' if b['pass_spoken_half_only'] else 'fail (no specialist)') if 'pass_spoken_half_only' in b else 'n/a')
             out.append(f"| {key.split('|')[0]} | {r['held_out']} | {r['n_objects']} | {f(e['decoder (word)'], d)} ({r['head']}, {r['layers']['W']}) | "
                        f"{f(b.get('spoken'), d)} | {f(b.get('specialist'), d)} | {f(e['name prior'], d)} | {f(e['vision tower'], d)} | "
-                       f"{f(e['late image tokens'], d)} | {f(e['word, no image'], d)} | {f(e['word, mismatched image'], d)} | "
+                       f"{f(e['late image tokens'], d)} | {f(e['word, no image'], d)} | {f(e.get('word, mismatched image'), d)} | "
                        f"{f(e['shuffled labels'], d)} | {f(e['random features'], d)} | {f(b.get('spoken_minus_decoder'), d)} | "
                        f"{b['ratio_to_specialist']:.2f} | {verdict} |" if b.get('ratio_to_specialist') is not None else
                        f"| {key.split('|')[0]} | {r['held_out']} | {r['n_objects']} | {f(e['decoder (word)'], d)} ({r['head']}, {r['layers']['W']}) | "
                        f"{f(b.get('spoken'), d)} | {f(b.get('specialist'), d)} | {f(e['name prior'], d)} | {f(e['vision tower'], d)} | "
-                       f"{f(e['late image tokens'], d)} | {f(e['word, no image'], d)} | {f(e['word, mismatched image'], d)} | "
+                       f"{f(e['late image tokens'], d)} | {f(e['word, no image'], d)} | {f(e.get('word, mismatched image'), d)} | "
                        f"{f(e['shuffled labels'], d)} | {f(e['random features'], d)} | {f(b.get('spoken_minus_decoder'), d)} | n/a | {verdict} |")
         out.append('')
         extra = []

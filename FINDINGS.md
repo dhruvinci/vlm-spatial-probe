@@ -56,3 +56,23 @@ abs-rel 0.223). It fades through the language layers to 0.345 at the last one, c
 11. **Inside one domain, the word holds orientation.** On KITTI, the object word reads a car's facing direction to
     within 9.4°-10.6°. The vision tower manages 13.9°-15.4° and the name prior 68°-80° (tables_e02.md:27-31). This is
     not a transfer test.
+
+## E05: a head on Qwen3.8's own vision tower (pre-registered)
+`experiments/E05-dense-vision-head/data/results_e05.json`
+
+12. **Per-pixel depth from the tower is coarse.** A trained head on Qwen3.8-27B's frozen vision tower reads NYU depth
+    at abs-rel 0.186 [0.173, 0.198], against MoGe-2's 0.096 [0.085, 0.107] on the same pixels (lower is better). That
+    is 1.94x, failing the pre-registered 1.5x bar.
+13. **Joints from the tower fall well short of a pose model.** Given the same person box, a head on the tower places
+    68.6% [67.0, 70.1] of visible COCO joints within 5% of the box diagonal, against 95.7% [94.9, 96.4] for ViTPose+
+    base (higher is better). That is 27 points below, failing the pre-registered 10-point bar.
+
+## E06: a second wording (pre-registered)
+`experiments/E06-prompt-robustness/data/tables_e06.md`
+
+14. **The spoken-answer findings survive rewording.** Qwen3.8-27B's asked depth stays at the name prior (0.395 vs
+    0.394, tables_e06.md:16). SpatialAxiom-9B still beats its base (0.244 vs 0.342; difference -0.097 [-0.136, -0.059],
+    tables_e06.md:10).
+15. **Relations asked the other way round cost the base and older models up to 10 points** of balanced accuracy.
+    SpaceQwen2.5-VL-3B drops from 0.698 to 0.598; SpatialAxiom-9B does not move (0.926 vs 0.926)
+    (tables_e06.md:27,39).

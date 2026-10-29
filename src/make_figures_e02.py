@@ -17,7 +17,9 @@ from make_figures import AQUA, BLUE, GREY, INK, INK2, ORANGE, SURF, plt_setup
 MODELS = ['Qwen3.8-27B', 'SpatialAxiom-9B', 'Qwen3.5-9B', 'SpaceQwen2.5-VL-3B', 'Qwen2.5-VL-3B']
 MEASURES = [('depth', 'Distance from the camera (abs-rel)'), ('centre', '3D position (relative error)'),
             ('distance', 'Distance between two objects (abs-rel)'), ('size', 'Size (abs-rel)'), ('xy', 'Position in the image (% diagonal)')]
-DOMAIN = {'people': 'people (COCO)', 'indoor': 'indoor (NYU)', 'two_people': 'two people (Harmony4D)', 'street': 'street (KITTI)'}
+DOMAIN = {'people': 'people (COCO)', 'indoor': 'indoor (NYU)', 'indoor_synth': 'synthetic indoor (Hypersim)',
+          'two_people': 'two people (Harmony4D)', 'street': 'street (KITTI)'}
+TAG = ''
 
 
 def transfer_figure(plt, R, model, out, ds='calm'):
@@ -51,7 +53,7 @@ def transfer_figure(plt, R, model, out, ds='calm'):
     axes[0].legend(loc='lower right', fontsize=7.5)
     fig.suptitle(f'{model}: a decoder trained on the other domains, tested on a domain it never saw (without MMA and grappling frames; 95% intervals)',
                  x=0.05, ha='left', fontsize=11, fontweight='bold', color=INK)
-    fig.savefig(out/f'fig6_transfer_{model}.png', dpi=130, bbox_inches='tight')
+    fig.savefig(out/f'fig6_transfer{TAG}_{model}.png', dpi=130, bbox_inches='tight')
     plt.close(fig)
 
 
@@ -70,7 +72,7 @@ def pass_grid(plt, R, out, ds='calm'):
                     ha='center', va='center', fontsize=6.5, color='white' if st == 'pass' else INK)
     ax.set_xlim(0, len(cols)); ax.set_ylim(0, len(run))
     ax.set_xticks(np.arange(len(cols)) + 0.47)
-    short = {'people': 'people', 'indoor': 'indoor', 'two_people': '2 people', 'street': 'street'}
+    short = {'people': 'people', 'indoor': 'indoor', 'indoor_synth': 'synth indoor', 'two_people': '2 people', 'street': 'street'}
     ax.set_xticklabels([f"{k.split('|')[0]}\n{short[k.split('|')[1]]}" for k in cols], fontsize=6.5)
     ax.set_yticks(np.arange(len(run)) + 0.45); ax.set_yticklabels(run[::-1], fontsize=8)
     ax.grid(False)
@@ -78,7 +80,7 @@ def pass_grid(plt, R, out, ds='calm'):
         s.set_visible(False)
     ax.set_title('Pre-registered bar: the decoder beats the spoken answer and is within 1.5x the specialist (held-out domain; calm frames)',
                  loc='left', fontsize=9.5)
-    fig.savefig(out/'fig7_pass_grid.png', dpi=130, bbox_inches='tight')
+    fig.savefig(out/f'fig7_pass_grid{TAG}.png', dpi=130, bbox_inches='tight')
     plt.close(fig)
 
 
@@ -86,7 +88,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--results', required=True)
     ap.add_argument('--out', required=True)
+    ap.add_argument('--tag', default='', help="'_e03' for the E03 figures")
     a = ap.parse_args()
+    global TAG
+    TAG = a.tag
     R = json.loads(Path(a.results).read_text())
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     plt = plt_setup()
