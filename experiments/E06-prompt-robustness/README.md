@@ -5,7 +5,7 @@ wording of the same questions?
 
 **Setup.**
 - Pre-registered ([PREREG.md](PREREG.md)).
-- All five models, E01's 1,385 images.
+- All five models, all 1,385 images E01 asked about (its 1,384 scored images plus the Figure 1 photo).
 - A second JSON ask with the same schema, and the relation questions asked the other way round (same truth).
 - Cost: part of the shared E03/E06 rental ($3.59 in all, as settled).
 

@@ -34,8 +34,10 @@ cited as `tables.md:line`. Intervals are 95% bootstrap intervals over images (2,
 | two_people (Harmony4D, camera 1) | 129 / 71 | 400 | 2D, depth (pelvis), 3D centre |
 | street (KITTI, held out) | 400 held out | 856 | 2D, depth, 3D centre, size |
 
-two_people frames by sequence type: sword 67, karate 51, hugging 50, MMA 23, grappling 19, ballroom 6. Every number
-is given for all frames (pre-registered) and without MMA and grappling ("calm"). The two give the same verdicts.
+two_people frames by sequence type: sword 61, karate 51, hugging 42, MMA 21, grappling 19, ballroom 6 (calm: 160).
+Every number is given for all frames (pre-registered) and without MMA and grappling ("calm"). The two give the same
+verdicts. (Corrected 2026-10-29: this line first gave the 216 frames extracted before the build dropped the 16 between
+each sequence's training and test parts; see `docs/DATA.md`.)
 
 ## Pre-registered outcomes (Qwen3.8-27B; test split of the training domains)
 | # | question | result | verdict |

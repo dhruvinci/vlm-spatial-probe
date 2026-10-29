@@ -9,15 +9,44 @@ dataset on Hugging Face holds only the extracted features, the models' answers a
 |---|---|---|
 | COCO val2017 (Lin et al., 2014) | people: 384 images | annotations CC BY 4.0; each image keeps its Flickr licence (recorded per image in `dataset.json`) |
 | NYU Depth v2, labelled set (Silberman et al., ECCV 2012) | indoor: 400 images, Kinect depth | no licence stated by the authors; research use. Only figures with an NYU image are shown |
-| Harmony4D (Khirodkar et al., NeurIPS 2024) | two_people: 216 frames, camera 1, multi-view body fits | MIT (Hugging Face dataset card `Jyun-Ting/Harmony4D`) |
+| Harmony4D (Khirodkar et al., NeurIPS 2024) | two_people: 200 frames, camera 1, multi-view body fits | MIT (Hugging Face dataset card `Jyun-Ting/Harmony4D`) |
 | KITTI object detection, training set (Geiger et al., CVPR 2012) | street: 400 images, held out | CC BY-NC-SA 3.0. Never shown in a figure |
 | COCO train2017 246285, "Zach MacPhee Dives Back into First" by Barry Stahl | Figure 1 only | CC BY 2.0 ([Flickr](https://www.flickr.com/photo.gne?id=5505334912)) |
 
-Harmony4D frames by sequence type: sword 67, karate 51, hugging 50, MMA 23, grappling 19, ballroom 6. MMA and grappling
-frames never appear in a figure. Every result is also reported without them.
+Harmony4D frames by sequence type: sword 61, karate 51, hugging 42, MMA 21, grappling 19, ballroom 6 (200). MMA and
+grappling frames never appear in a figure. Every result is also reported without them ("calm": 160 frames).
 
-E03 uses calm sequences only: E01's 174 calm frames plus 407 new frames from the same sequences, 581 in total
-(sword 67 + 172 = 239, hugging 50 + 115 = 165, karate 51 + 110 = 161, ballroom 6 + 10 = 16). No MMA or grappling.
+E03 uses calm sequences only: E01's 160 calm frames plus 407 new frames from the same sequences, 567 in total
+(sword 61 + 172 = 233, hugging 42 + 115 = 157, karate 51 + 110 = 161, ballroom 6 + 10 = 16). No MMA or grappling.
+
+**Correction (2026-10-29).** This file and E01's RESULTS gave 216 Harmony4D frames (sword 67, karate 51, hugging 50,
+MMA 23, grappling 19, ballroom 6), and E03's calm set as 581. Those are the frames extracted before the build dropped
+the 16 that fall between each sequence's training and test parts (`src/build_dataset.py`, `finish`). The dataset, and
+every result, has 200 (E01) and 567 (E03). No result changes.
+
+## Counts (from `dataset.json`)
+E01 (`src/build_dataset.py`, `finish`): 1,384 scored images and 3,252 named objects, plus the Figure 1 photo (4 objects,
+not scored). The models were asked about all 1,385 images.
+
+| domain | images (train / test) | objects (train / test) |
+|---|---|---|
+| people (COCO val2017) | 384 (269 / 115) | 910 (635 / 275) |
+| indoor (NYU Depth v2, split by scene) | 400 (276 / 124) | 1,086 (748 / 338) |
+| two_people (Harmony4D) | 200 (129 / 71); calm 160 | 400 (258 / 142); calm 320 |
+| street (KITTI) | 400, held out | 856 |
+| total scored | 1,384; calm 1,344 | 3,252; calm 3,172 |
+
+E03 adds (`finish_e03`), calm only:
+
+| domain | new images | new objects | E03 total with E01's calm images |
+|---|---|---|---|
+| indoor_synth (Hypersim) | 465 | 1,183 | 465 images, 1,183 objects |
+| two_people (Harmony4D) | 407 | 814 | 567 frames, 1,134 people |
+| street (KITTI) | 201 | 421 | 601 images, 1,277 objects |
+| total | 1,073 | 2,418 | |
+
+E03's indoor (NYU) set is E01's 400 images (1,086 objects); people (COCO) is E01's 384, used for 2D position only.
+E07 uses E03's depth sets.
 
 ## Models
 
