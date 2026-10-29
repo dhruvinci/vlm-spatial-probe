@@ -50,9 +50,9 @@ def transfer_figure(plt, R, model, out, ds='calm'):
         ax.set_xlim(0, cap * 1.08 if cap else 1)
         ax.set_title(title.replace(' (', '\n('), loc='left', fontsize=9.5)
         ax.set_xlabel('lower is better', fontsize=7.5)
-    axes[0].legend(loc='lower right', fontsize=7.5)
+    fig.legend(*axes[0].get_legend_handles_labels(), loc='lower center', ncol=4, fontsize=8, frameon=False, bbox_to_anchor=(0.5, -0.06))
     fig.suptitle(f'{model}: a decoder trained on the other domains, tested on a domain it never saw (without MMA and grappling frames; 95% intervals)',
-                 x=0.05, ha='left', fontsize=11, fontweight='bold', color=INK)
+                 x=0.05, y=1.04, ha='left', fontsize=11, fontweight='bold', color=INK)
     fig.savefig(out/f'fig6_transfer{TAG}_{model}.png', dpi=130, bbox_inches='tight')
     plt.close(fig)
 

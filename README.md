@@ -70,12 +70,16 @@ without the two-person dataset's MMA and grappling frames, and no verdict change
   - **Yes.** Qwen3.8's depth stays at the name prior; SpatialAxiom still beats its base.
   - The base and older models lose up to 10 points on relations asked the other way round (test split; 12.8 for
     Qwen2.5-VL-3B on all items).
-- [E03](experiments/E03-many-domain-decoder/): a decoder trained on one more scene type (synthetic indoor). Running; results to follow.
+- [E03](experiments/E03-many-domain-decoder/): a decoder trained on more scene types (pre-registered).
+  - **Still no transfer.** Qwen3.8-27B's held-out depth abs-rel is 0.28-0.80 for the decoder, against 0.20-0.57 for its
+    spoken answer; it loses on every unseen scene type. 1 of 26 folds passes, weakly.
+  - **Variety helps:** indoor depth error falls from 5.32 (E02) to 0.45 once synthetic indoor is in training; street
+    barely moves.
 - Plan, not run: [docs/PLAN_E03.md](docs/PLAN_E03.md). A decoder trained on many datasets, and the measures not yet
   covered: orientation and angles, surfaces, motion, counts.
 
 ## Data and models
-- **Public data only:** COCO, NYU Depth v2, Harmony4D multi-person capture, KITTI (held out).
+- **Public data only:** COCO, NYU Depth v2, Hypersim (E03), Harmony4D multi-person capture, KITTI (held out).
 - **Licences:** each one, and each model's, is in [docs/DATA.md](docs/DATA.md).
 - **Images are not redistributed.** `src/build_dataset.py` rebuilds the set.
 - **Features:** the extracted features, the models' answers and the labels are on a private Hugging Face dataset,

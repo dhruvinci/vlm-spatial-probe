@@ -2,7 +2,7 @@
 same objects; 95% bootstrap intervals over images; the pre-registered pass bar (experiments/E02-decoder-transfer/PREREG.md).
 
   python src/analyse_e02.py --cache CACHE --out experiments/E02-decoder-transfer/data/results_e02.json
-  (also writes data/tables_e02.md next to it)
+  (also writes data/tables_e02.md, or tables_e03.md with --e03, next to it)
 """
 import argparse
 import json
@@ -127,7 +127,8 @@ def main():
                         res['n_objects'] = len(pairs); res['n_images'] = len(set(pid))
                         res['error'] = {k: stat(*boot.mean(pid, v), len(pairs)) for k, v in E_.items()}
                         dec = E_['decoder (word)']
-                        sp = [(j, asks[x[3]][1].get((min(x[4]['a'], x[4]['b']), max(x[4]['a'], x[4]['b'])))) for j, x in enumerate(pairs)]
+                        sp = [(j, asks[x[3]][1].get((min(x[4]['a'], x[4]['b']), max(x[4]['a'], x[4]['b']))))   # images with no
+                              for j, x in enumerate(pairs) if x[3] in asks]                                        # spoken answer: skipped
                         sp = [(j, v) for j, v in sp if v]
                         spoken = {j: abs(v - pairs[j][2]) / pairs[j][2] for j, v in sp}
                         mg = {}
@@ -191,7 +192,7 @@ def main():
         lines += table_lines(model, M)
     Path(a.out).parent.mkdir(parents=True, exist_ok=True)
     Path(a.out).write_text(json.dumps(R, indent=1, default=float))
-    (Path(a.out).parent/'tables_e02.md').write_text('\n'.join(lines) + '\n')
+    (Path(a.out).parent/f'tables_{tag}.md').write_text('\n'.join(lines) + '\n')
     print('saved', a.out)
 
 

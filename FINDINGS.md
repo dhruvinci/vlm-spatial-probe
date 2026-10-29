@@ -57,6 +57,20 @@ abs-rel 0.223). It fades through the language layers to 0.345 at the last one, c
     within 9.4°-10.6°. The vision tower manages 13.9°-15.4° and the name prior 68°-80° (tables_e02.md:27-31). This is
     not a transfer test.
 
+## E03: a decoder trained on more scene types (pre-registered)
+`experiments/E03-many-domain-decoder/data/tables_e03.md`; calm frames only; lower is better.
+
+16. **With three training domains, the decoder still loses to the spoken answer on every unseen scene type.**
+    Qwen3.8-27B's depth decoder scores abs-rel 0.454, 0.284, 0.743 and 0.802 (held-out indoor, synthetic indoor, two
+    people, street), against 0.288, 0.231, 0.574 and 0.199 spoken and 0.101, 0.178, 0.222 and 0.102 for MoGe-2
+    (tables_e03.md:12-15). Across both models it passes the pre-registered bar in 1 of 26 folds, a weak 2D street fold
+    as in E02 (tables_e03.md:101,110).
+17. **Variety helps where a similar scene type is in training.** On E02's held-out objects, Qwen3.8-27B's indoor depth
+    error falls from 5.32 to 0.45 once synthetic indoor is added; street, with no sibling, goes from 0.82 to 0.80.
+    Variety helps in 11 of 12 paired comparisons (experiments/E03-many-domain-decoder/data/variety.json).
+18. **Relative depth still does not transfer.** Scale-invariant abs-rel is 0.193-0.935 for the decoder against
+    0.051-0.156 spoken (tables_e03.md:33-36).
+
 ## E05: a head on Qwen3.8's own vision tower (pre-registered)
 `experiments/E05-dense-vision-head/data/results_e05.json`
 
