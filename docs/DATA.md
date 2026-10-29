@@ -16,6 +16,9 @@ dataset on Hugging Face holds only the extracted features, the models' answers a
 Harmony4D frames by sequence type: sword 67, karate 51, hugging 50, MMA 23, grappling 19, ballroom 6. MMA and grappling
 frames never appear in a figure. Every result is also reported without them.
 
+E03 uses calm sequences only: E01's 174 calm frames plus 407 new frames from the same sequences, 581 in total
+(sword 67 + 172 = 239, hugging 50 + 115 = 165, karate 51 + 110 = 161, ballroom 6 + 10 = 16). No MMA or grappling.
+
 ## Models
 
 | model | revision | licence |
