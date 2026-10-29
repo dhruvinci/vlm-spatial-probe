@@ -41,3 +41,18 @@ abs-rel and % of the image diagonal: lower is better. Accuracy: higher is better
 Exploratory (not pre-registered): depth read from individual image tokens is best in the vision tower (block 18,
 abs-rel 0.223). It fades through the language layers to 0.345 at the last one, close to the cell position alone
 (0.368) (`data/dense_Qwen3.8-27B.json` on the dataset; Figure 5).
+
+## E02: does a decoder transfer to an unseen domain? (pre-registered)
+`experiments/E02-decoder-transfer/data/tables_e02.md`; calm frames; lower is better.
+
+8. **A decoder on the object word does not transfer across scene types.** Trained on two domains and tested on the
+   third, Qwen3.8-27B's depth decoder scores abs-rel 5.32, 0.73 and 0.82 (indoor, two people, street). Its spoken
+   answer scores 0.29, 0.57 and 0.20, and MoGe-2 0.10, 0.23 and 0.10 (tables_e02.md:12-14).
+9. **Across all five models it passes the pre-registered bar in 2 of 50 folds.** Both are 2D position on streets, and
+   both are weak: the spoken answers were on the wrong scale, and the models' own native boxes beat the decoder there
+   (tables_e02.md:94,107,162,175).
+10. **Relative depth does not transfer either.** Scale-invariant abs-rel is 0.287, 0.123 and 0.386 for the decoder,
+    against 0.115, 0.051 and 0.150 for the spoken answer (tables_e02.md:33-35).
+11. **Inside one domain, the word holds orientation.** On KITTI, the object word reads a car's facing direction to
+    within 9.4°-10.6°. The vision tower manages 13.9°-15.4° and the name prior 68°-80° (tables_e02.md:27-31). This is
+    not a transfer test.

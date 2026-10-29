@@ -56,6 +56,14 @@ without the two-person dataset's MMA and grappling frames, and no verdict change
   and column on all five processors before any feature is read. The earlier probe's direct reshape misplaced 14,080 of
   14,400 locations.
 - [E01](experiments/E01-spatial-ask-and-probe/): ask, then probe, layer by layer (pre-registered).
+- [E02](experiments/E02-decoder-transfer/): does a decoder on the hidden states transfer to a scene type it never saw?
+  (pre-registered; $0, run on the cached features).
+  - **It does not.** Depth abs-rel on a held-out domain is 0.73-5.3 for the decoder, against 0.20-0.57 for the
+    model's own answer and 0.10-0.23 for MoGe-2.
+  - It passes the bar in 2 of 50 folds, both weak.
+  - Within KITTI, the object word reads car orientation to about 10°.
+- Plan, not run: [docs/PLAN_E03.md](docs/PLAN_E03.md). A decoder trained on many datasets, and the measures not yet
+  covered: orientation and angles, surfaces, motion, counts.
 
 ## Data and models
 - **Public data only:** COCO, NYU Depth v2, Harmony4D multi-person capture, KITTI (held out).

@@ -7,6 +7,7 @@ boxes. Each model sees only the stored image (longer side 640 px), with no intri
 
   python src/cv_reference.py moge   --data DATA --out OUT.json     (env: MoGe-2)
   python src/cv_reference.py rfdetr --data DATA --out OUT.json --weights rf-detr-medium.pth   (env: rfdetr)
+  python src/cv_reference.py rfdetr_e02 ...   (E02: indoor and street objects through the pre-registered class map)
 """
 import argparse
 import json
@@ -48,14 +49,21 @@ def run_moge(rows, data):
     return out
 
 
-def run_rfdetr(rows, data, weights):
+# E02 (pre-registered class map): indoor and street names -> COCO classes; other names get no specialist box
+E02_MAP = {'chair': 'chair', 'bed': 'bed', 'sofa': 'couch', 'table': 'dining table', 'television': 'tv', 'monitor': 'tv',
+           'microwave': 'microwave', 'sink': 'sink', 'toilet': 'toilet', 'oven': 'oven', 'laptop': 'laptop',
+           'plant': 'potted plant', 'vase': 'vase', 'bottle': 'bottle', 'clock': 'clock', 'keyboard': 'keyboard', 'bowl': 'bowl',
+           'car': 'car', 'truck': 'truck', 'pedestrian': 'person', 'tram': 'train'}
+
+
+def run_rfdetr(rows, data, weights, domains=('people', 'two_people', 'figure'), name_map=None):
     import rfdetr
     from rfdetr.assets.coco_classes import COCO_CLASSES
     det = rfdetr.RFDETRMedium(pretrain_weights=weights)
     name_to_id = {v: k for k, v in COCO_CLASSES.items()}
     out = {}
     for n, r in enumerate(rows):
-        if r['domain'] not in ('people', 'two_people', 'figure'):
+        if r['domain'] not in domains:
             continue
         img = Image.open(data/r['image']).convert('RGB')
         W, H = img.size
@@ -70,7 +78,7 @@ def run_rfdetr(rows, data, weights):
                 objs.append({'box': pb[k].tolist() if len(pb) == 2 else None})
         else:
             for o in r['objects']:
-                cid = name_to_id.get(o['name'])
+                cid = name_to_id.get((name_map or {}).get(o['name'], o['name']))
                 m = d.class_id == cid if cid is not None else np.zeros(len(d.class_id), bool)
                 objs.append({'box': boxes[m][np.argmax(d.confidence[m])].tolist() if m.any() else None})
         out[r['id']] = {'objects': objs}
@@ -81,14 +89,19 @@ def run_rfdetr(rows, data, weights):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('part', choices=['moge', 'rfdetr'])
+    ap.add_argument('part', choices=['moge', 'rfdetr', 'rfdetr_e02'])
     ap.add_argument('--data', required=True)
     ap.add_argument('--out', required=True)
     ap.add_argument('--weights')
     a = ap.parse_args()
     data = Path(a.data)
     rows = json.loads((data/'dataset.json').read_text())
-    res = run_moge(rows, data) if a.part == 'moge' else run_rfdetr(rows, data, a.weights)
+    if a.part == 'moge':
+        res = run_moge(rows, data)
+    elif a.part == 'rfdetr':
+        res = run_rfdetr(rows, data, a.weights)
+    else:                                                    # E02: indoor and street with the fixed class map
+        res = run_rfdetr(rows, data, a.weights, domains=('indoor', 'street'), name_map=E02_MAP)
     Path(a.out).write_text(json.dumps(res))
     print('saved', a.out, len(res))
 
