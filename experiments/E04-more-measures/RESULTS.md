@@ -3,7 +3,7 @@
 **Status.**
 - Pre-registered ([PREREG.md](PREREG.md)): committed and pushed as 40feb44 before any data was built or GPU rented. The
   code was pushed before the rental (6e12662).
-- One rental, 2026-10-30: $5.39 against a $9.34 cap ([docs/SPEND.md](../../docs/SPEND.md)). Probes, specialists and
+- One rental, 2026-10-30: $5.53 (3.22 h, after billing settled) against a $9.34 cap ([docs/SPEND.md](../../docs/SPEND.md)). Probes, specialists and
   scoring ran locally.
 - Every number below is printed by `src/analyse_e04.py` into [data/tables_e04.md](data/tables_e04.md) and cited as
   `tables_e04.md:line`. Test split only. Errors: lower is better. Intervals: 95% bootstrap over images or clips (2,000

@@ -14,7 +14,7 @@ same question about the other quantities a camera-based system measures:
   Hypersim, NYU Depth v2 and COCO.
 - All five E01 models, every layer. E01's probes, prior, controls and gates, unchanged.
 - Specialists: MoGe-2's surface normals (median inside the object's mask) and RF-DETR's counts.
-- Cost: $5.39 on one rented GPU, under the $9.34 cap ([docs/SPEND.md](../../docs/SPEND.md)).
+- Cost: $5.53 on one rented GPU (3.22 h), under the $9.34 cap ([docs/SPEND.md](../../docs/SPEND.md)).
 - Deviations (fewer NYU and Objectron items than planned, two bugs fixed before any model saw the data or before
   scoring, three models' features not yet on Hugging Face): listed in [RESULTS.md](RESULTS.md).
 
