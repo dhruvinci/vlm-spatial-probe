@@ -374,9 +374,12 @@ def build_coco(src, out, used):
     pairs = [(iid, c, d) for (iid, c), d in per.items() if not d['crowd'] and d['n'] >= 1 and f'coco_{iid}' not in used]
     rng.shuffle(pairs)
     chosen, taken, filled = [], set(), {}
-    for lo, hi in bands:
-        got = [p for p in pairs if lo <= p[2]['n'] <= hi and p[0] not in taken][:250]
-        taken |= {p[0] for p in got}; chosen += got; filled[f'{lo}-{hi}'] = len(got)
+    for lo, hi in bands:                                        # one class per image, also within a band
+        got = []
+        for p in pairs:
+            if len(got) < 250 and lo <= p[2]['n'] <= hi and p[0] not in taken:
+                got.append(p); taken.add(p[0])
+        chosen += got; filled[f'{lo}-{hi}'] = len(got)
     rows = []
     for iid, c, d in chosen:
         im = imgs[iid]
@@ -417,6 +420,7 @@ def finish(out):
                 assert (out/q).exists(), q
         report[part] = {'rows': len(rs), 'test': sum(r['split'] == 'test' for r in rs), 'objects': sum(len(r['objects']) for r in rs)}
         rows += rs
+    assert len({r['id'] for r in rows}) == len(rows), 'row ids are not unique'
     (out/'dataset.json').write_text(json.dumps(rows))
     print(json.dumps(report, indent=1))
     print('images', sum(len(r.get('frames', [1])) for r in rows), 'objects', sum(len(r['objects']) for r in rows))
