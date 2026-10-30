@@ -80,11 +80,20 @@ without the two-person dataset's MMA and grappling frames, and no verdict change
     held-out folds), though the spoken answer still orders objects better.
   - Erasing scene type does not help; giving the camera helps only where object size is predictable (one pass, Qwen3.8
     on two people, where box and camera alone already go most of the way).
-- Plan, not run: [docs/PLAN_E03.md](docs/PLAN_E03.md). A decoder trained on many datasets, and the measures not yet
-  covered: orientation and angles, surfaces, motion, counts.
+- [E04](experiments/E04-more-measures/): the measures E01 did not cover: orientation, surfaces, motion over four
+  frames, counts (pre-registered; $5.53).
+  - **The word holds which way things face, and the surface normal.** Qwen3.8-27B's object word reads facing at
+    35.6° against the vision tower's 43.2° and the name prior's 57.4°. The hypothesis is falsified for facing in all
+    five models, and for the surface normal in the two larger Qwen3-family models.
+  - **Spoken, it is not used.** Facing is spoken at 52.4° by Qwen3.8-27B, and worse than the prior by the other four.
+    Spoken surface classes are no better than the prior.
+  - **Counts are the exception.** The spoken count is a measurement (1.88 against the prior's 2.91, level with
+    RF-DETR's 2.07). The class word's state counts better still (1.43).
+  - Speed, heading and dimensions are not in the vision read-out at the pre-registered bar.
 
 ## Data and models
-- **Public data only:** COCO, NYU Depth v2, Hypersim (E03), Harmony4D multi-person capture, KITTI (held out).
+- **Public data only:** COCO, NYU Depth v2, Hypersim (E03), Harmony4D multi-person capture, KITTI (held out); E04
+  adds KITTI tracking and Objectron.
 - **Licences:** each one, and each model's, is in [docs/DATA.md](docs/DATA.md).
 - **Images are not redistributed.** `src/build_dataset.py` rebuilds the set.
 - **Features:** the extracted features, the models' answers and the labels are on a private Hugging Face dataset,
@@ -100,7 +109,7 @@ randomly initialised copies of each architecture: `tests/make_tiny.py`, `tests/c
 - Qwen3.8 / Qwen3.5 / Qwen2.5-VL (Qwen team); SpatialAxiom-9B (Lou et al., 2026); SpaceQwen2.5-VL-3B (remyx.ai).
 - MoGe-2 (Wang et al.); RF-DETR (Roboflow).
 - COCO (Lin et al., 2014); NYU Depth v2 (Silberman et al., 2012); Harmony4D (Khirodkar et al., 2024); KITTI (Geiger et
-  al., 2012).
+  al., 2012); Hypersim (Roberts et al., 2021); Objectron (Ahmadyan et al., 2021).
 - Figure 1 photo: "Zach MacPhee Dives Back into First" by Barry Stahl, CC BY 2.0.
 
 Code: MIT (`LICENSE`). Text and figures: CC BY 4.0 (`LICENSE-docs`). Cite: `CITATION.cff`.

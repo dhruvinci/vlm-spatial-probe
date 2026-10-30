@@ -53,4 +53,36 @@ What the time went on:
 
 E07 (2026-10-29) ran locally on CPU on the cached features: $0.
 
-**Paper 04 total, both rentals: $7.66** ($21.6038 → $13.9462).
+## Third rental: E04 (2026-10-30)
+| item | value |
+|---|---|
+| pod | `ebhchtsyp63y3n`, community cloud, 1x RTX PRO 6000 Blackwell Workstation (96 GB), $1.69/h |
+| uptime | 3.22 h (05:42-08:55 UTC) |
+| account balance | $13.9462 before; $8.4211 after billing settled, with no pods left on the account |
+| **spend** | **$5.53** (cap for this rental: $9.34, approved with $7 added; paper 04 cap $17) |
+
+What the time went on (`logs/run_all.log` and each model's `meta.json`):
+- **Setup and data, 20 minutes before the first extraction.**
+  - The NYU labelled file (2.9 GB) came from its server. It started at about 80 KB/s, so a local copy was uploaded as a
+    fallback, but the server sped up and finished first. The fallback was deleted unused.
+  - The NYU and Hypersim surface truth were built on the pod, which has h5py. Hypersim was read by byte range: 600
+    frames in about 11 minutes.
+  - The five models downloaded meanwhile.
+- **Extraction** (features with the image, no image and a mismatched image, then the asked answers):
+
+  | model | time | of which asked |
+  |---|---|---|
+  | Qwen3.8-27B | 70.3 min | 36.1 min |
+  | SpatialAxiom-9B | 25.8 min | 13.4 min |
+  | Qwen3.5-9B | 35.6 min | 23.4 min |
+  | SpaceQwen2.5-VL-3B | 17.2 min | 8.2 min |
+  | Qwen2.5-VL-3B | 16.5 min | 7.4 min |
+
+- **Download:** about 32 GB of features (every layer) at about 11-13 MB/s, overlapped with the extractions. The last
+  fetch and the termination took 5 minutes after the run ended.
+- **No-cost hiccup:** the start command's SSH session hung, though the run had started.
+
+`src/pod/launch.py watch`, restarted by a wrapper after any SSH error, terminated the pod once every model was fetched,
+and the empty pod list was verified through the API.
+
+**Paper 04 total, three rentals: $13.18** ($21.6038 → $8.4211), against the $17 cap.

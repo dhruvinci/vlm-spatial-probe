@@ -59,6 +59,22 @@ E07 uses E03's depth sets.
 | NYU Depth v2, labelled set, images not in E01 | surfaces | no licence stated by the authors; research use |
 | COCO val2017, images not in E01 | counts | annotations CC BY 4.0; images under their Flickr licences |
 
+E04 as built (`src/build_e04.py finish`): 4,379 images or clips and 4,979 objects, split by group (60/40 by group;
+test in brackets).
+
+| source | measure | items (test) | objects (test) |
+|---|---|---|---|
+| KITTI object | orientation | 1,000 (400) | 1,000 (400) |
+| Harmony4D calm sequences | orientation | 600 (349) | 1,200 (698) |
+| Objectron chairs and pedal bicycles | orientation | 393 (157) | 393 (157) |
+| Hypersim, 73 scenes | surfaces | 600 (240) | 600 (240) |
+| NYU Depth v2 | surfaces | 386 (156) | 386 (156) |
+| KITTI tracking | motion | 300 (123) | 300 (123) |
+| Harmony4D calm sequences | motion | 100 (48) | 100 (48) |
+| COCO val2017 | counts | 1,000 (400) | 1,000 (400) |
+
+Fewer NYU and Objectron items than pre-registered, and why: [E04 RESULTS](../experiments/E04-more-measures/RESULTS.md).
+
 Not used: Omni3D's own annotations (CC BY-NC 4.0; Objectron is read directly), SUN RGB-D (no licence stated),
 nuScenes (terms not readable without an account), ARKitScenes (Apple non-commercial licence; not needed), and
 TAPVid-3D (annotations CC BY 4.0, but none of its video sources allows redistribution of derived data). Images are not

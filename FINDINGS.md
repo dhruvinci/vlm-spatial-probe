@@ -106,3 +106,33 @@ abs-rel 0.223). It fades through the language layers to 0.345 at the last one, c
     box's angular size passes E03's bar once: Qwen3.8-27B with two people held out, 0.155 against 0.574 spoken and 0.222
     for MoGe-2 (tables_e07.md:22). There, box plus camera alone already reach 0.266. Elsewhere it is mixed (4 folds
     better than E03's decoder, 4 worse; tables_e07.md:54).
+
+## E04: the measures E01 did not cover (pre-registered)
+`experiments/E04-more-measures/data/tables_e04.md`; test split; lower is better. Harmony4D calm sequences only.
+
+22. **Qwen3.8-27B's object word holds which way things face, and the surface normal, from the image.**
+    - Facing: the word reads it at 35.6° against 43.2° for the vision tower and 57.4° for the name prior. That keeps
+      1.53 [1.31, 1.88] of the tower's gain (tables_e04.md:9).
+    - With no image or a mismatched image, the word is at the prior (57.5°).
+    - Surface normal: 32.0° against 31.6° for the tower and 40.1° for the prior. That keeps 0.95 of the tower's gain,
+      and is 20.1% better than the prior, just over the 20% bar (tables_e04.md:11).
+    - The pre-registered hypothesis is falsified for both. Facing is falsified in all five models, the normal in
+      Qwen3.8-27B and SpatialAxiom-9B (tables_e04.md:46, 48, 83, 120, 157).
+    - On people, every model's word reads facing better than its tower (Qwen3.8-27B 28.4° against 44.0°). On KITTI
+      objects the tower is better (38.4° against 43.2°) (tables_e04.md:27-28).
+23. **Asked, the models do not say it.**
+    - Qwen3.8-27B's spoken facing is 52.4°, 8.7% better than the prior, so qualitative. The other four models are worse
+      than the prior, at 72.6°-94.6° (tables_e04.md:9, 46, 83, 120, 157).
+    - Spoken surface classes are no better than the prior (0.44 against 0.43, 1 - balanced accuracy;
+      tables_e04.md:12).
+24. **Counting is the one measure spoken as a measurement.**
+    - Qwen3.8-27B's spoken count is off by 1.88 against the prior's 2.91 (35% better), and level with RF-DETR's 2.07
+      (difference -0.19 [-0.44, 0.09]) (tables_e04.md:16, 19).
+    - The class word's state does better than both, at 1.43. It beats the prior by 47-51% in every model, while the
+      whole-image vision read-out gains about 5% (tables_e04.md:16, 53, 90, 127, 164).
+25. **Speed, heading and dimensions are not in the vision read-out at the pre-registered bar**, in any model (G1).
+    - For speed this is by construction: the tower's read-out sees only the last of the four frames.
+    - Late image tokens, which can attend to earlier frames, read speed 15.5% better than the prior (tables_e04.md:14).
+26. **Spatial fine-tuning improves spoken facing a little, without making it a measurement.** SpatialAxiom-9B is 9.9°
+    [6.3, 13.9] better than its base Qwen3.5-9B, at 72.1° against 82.0° (tables_e04.md:194).
+    - It gives joint angles in the wrong convention (about 10-15° for straight limbs, where 180 was asked).

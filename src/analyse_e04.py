@@ -74,6 +74,24 @@ def parse(rec):
     return res
 
 
+def lenient_count(rec):
+    """Exploratory: a count from answers that ignore the asked form: {"<class>": n}, {"<class>": [{"count": n}]}, or
+    {"<class>": [one box per object]} (len of the list; a truncated list undercounts)."""
+    d, _ = json_blocks(rec['answer'])
+    if not isinstance(d, dict) or len(d) != 1:
+        return None
+    val = list(d.values())[0]
+    if number(val) is not None:
+        return number(val)
+    if isinstance(val, list) and val and all(isinstance(e, dict) for e in val):
+        cs = [number(e.get('count')) for e in val if number(e.get('count')) is not None]
+        if len(cs) == 1:
+            return cs[0]
+        if all('bbox_2d' in e for e in val):
+            return float(len(val))
+    return None
+
+
 def spoken_err(t, v, o):
     """Per-item error of a spoken value against the object's truth (None if not answered)."""
     if t == 'facing' and 'facing' in v:
@@ -144,7 +162,8 @@ def main():
             continue
         Pj = json.loads(pf.read_text())
         af = Path(a.answers)/f'e04_{model}'/'ask.jsonl'
-        asks = {x['id']: parse(x) for x in (json.loads(l) for l in af.read_text().splitlines())} if af.exists() else {}
+        raw = {x['id']: x for x in (json.loads(l) for l in af.read_text().splitlines())} if af.exists() else {}
+        asks = {k: parse(x) for k, x in raw.items()}
         M = {}
         lines += [f'## {model}', '', '| target | n | P | V | L_img | W | W no image | W mismatched | shuffled | random | spoken (coverage) | specialist | G0 | G1 | R L_img | R W | outcome | attribution |',
                   '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|']
@@ -170,10 +189,14 @@ def main():
             c = Pj['controls'].get('V', {}).get(t)
             if c:
                 pc = lambda arr: np.array([dict(zip(c['test_idx'], arr))[i] for i in te], float)
-                E['shuffled'] = np.mean([err(kind, pc(s), Y[te]) for s in c['shuffled_preds']], 0)
+                shuf = [err(kind, pc(s), Y[te]) for s in c['shuffled_preds']]
+                E['shuffled'] = np.mean(shuf, 0)
                 E['random'] = err(kind, pc(c['random']), Y[te])
             agg = (lambda e: bal_err(boot, ids, e, Y[te])) if kind == 'class' else (lambda e: boot.mean(ids, e))
             S = {k: agg(v) for k, v in E.items()}
+            if c and kind == 'class':                                  # each permutation scored, then averaged
+                per = [agg(e_) for e_ in shuf]
+                S['shuffled'] = (float(np.mean([q_[0] for q_ in per])), np.mean([q_[1] for q_ in per], 0))
             res = {'n_test': int(len(te)), 'n_train': int(len(tr)), 'layers': {f: Pj['selected'][f][t]['layer'] for f in FAMS if f in Pj['selected'] and t in Pj['selected'][f]},
                    'error': {k: stat(p, b, len(te)) for k, (p, b) in S.items()}}
             Pp, Pb = S['P']; Vp, Vb = S['V']
@@ -215,9 +238,36 @@ def main():
                            'P_minus_spoken': stat(p2 - p1, b2 - b1, len(js)),
                            'measurement': bool(p2 and (p2 - p1) / p2 >= 0.2 and ci(b2 - b1)[0] > 0 and len(js) >= 30)})
                 spoken_all.setdefault(t, {})[model] = {ids[j]: sp[j] for j in js} | {'_idx': {ids[j] + f'#{recs[te[j]]["k"]}': sp[j] for j in js}}
-            elif sp:
-                js = sorted(sp)
-                q1.update({'spoken_error_rate': float(np.mean([sp[j] for j in js])), 'n': len(js)})
+            elif sp:                                                   # class: 1 - balanced accuracy, as the probes
+                js = sorted(sp); sid = [ids[j] for j in js]
+                p1, b1 = bal_err(boot, sid, np.array([sp[j] for j in js]), Y[te][js])
+                p2, b2 = bal_err(boot, sid, E['P'][js], Y[te][js])
+                spoken_all.setdefault(t, {})[model] = {'_idx': {ids[j] + f'#{recs[te[j]]["k"]}': sp[j] for j in js},
+                                                       '_cls': {ids[j] + f'#{recs[te[j]]["k"]}': int(Y[te[j]].argmax()) for j in js}}
+                q1.update({'spoken_error_rate': float(np.mean([sp[j] for j in js])), 'n': len(js),
+                           'spoken': stat(p1, b1, len(js)), 'P_on_same': stat(p2, b2, len(js)), 'P_minus_spoken': stat(p2 - p1, b2 - b1, len(js)),
+                           'measurement': bool(p2 and (p2 - p1) / p2 >= 0.2 and ci(b2 - b1)[0] > 0 and len(js) >= 30)})
+            if t == 'count' and sp is not None:                        # exploratory: lenient parse of off-form answers
+                le = {}
+                for j, i in enumerate(te):
+                    r = recs[i]
+                    if j in sp:
+                        le[j] = sp[j]
+                    elif r['id'] in raw and (n_ := lenient_count(raw[r['id']])) is not None and n_ >= 0:
+                        le[j] = abs(n_ - r['o']['count'])
+                if le:
+                    js = sorted(le); sid = [ids[j] for j in js]
+                    p1, b1 = boot.mean(sid, [le[j] for j in js])
+                    q1['exploratory_lenient_parse'] = {'coverage': len(le) / len(te), 'spoken': stat(p1, b1, len(js))}
+            if t == 'joints' and sp:                                     # exploratory: read the answer as flexion (180 - x)
+                fl = {}
+                for j, i in enumerate(te):
+                    r = recs[i]; v = (asks.get(r['id']) or [{}] * 99)[r['k']] if r['id'] in asks else {}
+                    if 'joints' in v and r['o'].get('elbow_l_deg') is not None:
+                        fl[j] = float(np.mean(np.abs(np.subtract([180 - x for x in v['joints']], [r['o'][k] for k in ('elbow_l_deg', 'elbow_r_deg', 'knee_l_deg', 'knee_r_deg')]))))
+                js = sorted(fl); sid = [ids[j] for j in js]
+                p1, b1 = boot.mean(sid, [fl[j] for j in js])
+                q1['exploratory_read_as_flexion'] = stat(p1, b1, len(js))
             # specialists
             spec = {}
             if t == 'normal' and cvn:
@@ -231,6 +281,12 @@ def main():
                 js = sorted(se); sid = [ids[j] for j in js]
                 p1, b1 = boot.mean(sid, [se[j] for j in js]); p2, b2 = boot.mean(sid, E['W'][js])
                 spec = {'specialist': stat(p1, b1, len(js)), 'W_on_same': stat(p2, b2, len(js)), 'W_over_specialist': float(p2 / p1) if p1 else None}
+                both = [j for j in js if j in sp]                        # the spoken answer against the specialist, paired
+                if both:
+                    bid = [ids[j] for j in both]
+                    p3, b3 = boot.mean(bid, [sp[j] for j in both]); p4, b4 = boot.mean(bid, [se[j] for j in both])
+                    spec.update({'spoken_on_same': stat(p3, b3, len(both)), 'specialist_on_same_as_spoken': stat(p4, b4, len(both)),
+                                 'spoken_minus_specialist': stat(p3 - p4, b3 - b4, len(both))})
             # per source
             per_src = {}
             for dom in sorted({recs[i]['domain'] for i in te}):
@@ -250,6 +306,50 @@ def main():
                          f"{'pass' if ctrl_ok else 'fail'} | {'pass' if g1['pass'] else 'fail'} | "
                          f"{fr(rec_.get('L_img', {}).get('R'))} | {fr(rec_.get('W', {}).get('R'))} | {outcome} | "
                          f"{'yes' if attributed else 'no' if attributed is not None else 'n/a'} |")
+        # exploratory (not pre-registered): the spoken direction (towards / away / left / right / still) against the
+        # truth's class (heading_class), on the motion test items; baseline = the training split's most common class
+        tr_cls = [heading_class(r['o'].get('heading_deg') or 0, r['o']['moving']) for r in recs
+                  if r['measure'] == 'motion' and r['split'] == 'train' and (r['o'].get('heading_deg') is not None or not r['o']['moving'])]
+        base = max(set(tr_cls), key=tr_cls.count) if tr_cls else None
+        dr = []
+        for r in recs:
+            if r['measure'] != 'motion' or r['split'] != 'test' or (r['o']['moving'] and r['o'].get('heading_deg') is None):
+                continue
+            tc = heading_class(r['o'].get('heading_deg') or 0, r['o']['moving'])
+            v = asks[r['id']][r['k']] if r['id'] in asks else {}
+            dr.append((r['id'], tc, v.get('direction')))
+        if dr and base:
+            ans = [x for x in dr if x[2]]
+            boot = Boot([x[0] for x in ans])
+            pa, ba = boot.mean([x[0] for x in ans], [float(x[1] == x[2]) for x in ans])
+            pb, bb = boot.mean([x[0] for x in ans], [float(x[1] == base) for x in ans])
+            M['direction_exploratory'] = {'n': len(dr), 'coverage': len(ans) / len(dr), 'baseline_class': base,
+                                          'spoken_accuracy': stat(pa, ba, len(ans)), 'baseline_accuracy': stat(pb, bb, len(ans)),
+                                          'spoken_minus_baseline': stat(pa - pb, ba - bb, len(ans))}
+            g = lambda s: f"{s['value']:.3f} [{s['ci'][0]:.3f}, {s['ci'][1]:.3f}]"
+            lines += ['', f"Exploratory (not pre-registered): spoken motion direction, 5 classes, n = {len(ans)} answered of {len(dr)}: "
+                      f"accuracy {g(M['direction_exploratory']['spoken_accuracy'])}; always '{base}' (the training split's most "
+                      f"common class) {g(M['direction_exploratory']['baseline_accuracy'])}."]
+        g = lambda s: f"{s['value']:.3f} [{s['ci'][0]:.3f}, {s['ci'][1]:.3f}]"
+        for t, T in M.items():
+            sp_ = T.get('specialist', {}) if isinstance(T, dict) else {}
+            if 'spoken_minus_specialist' in sp_:
+                lines.append(f"Spoken against the specialist ({t}, paired, n = {sp_['spoken_on_same']['n']}): spoken "
+                             f"{g(sp_['spoken_on_same'])}, specialist {g(sp_['specialist_on_same_as_spoken'])}, difference "
+                             f"{g(sp_['spoken_minus_specialist'])}.")
+        if 'count' in M and 'exploratory_lenient_parse' in M['count']['Q1']:
+            x = M['count']['Q1']['exploratory_lenient_parse']
+            lines.append(f"Exploratory (not pre-registered): spoken count with off-form answers also parsed ({{class: n}}, "
+                         f"{{class: [{{count}}]}}, a list of boxes): coverage {x['coverage']:.0%}, error {g(x['spoken'])}.")
+        if 'joints' in M and 'exploratory_read_as_flexion' in M['joints']['Q1']:
+            lines.append(f"Exploratory (not pre-registered): spoken joint angles read as flexion (180 - answer): "
+                         f"{g(M['joints']['Q1']['exploratory_read_as_flexion'])}.")
+        lines += ['', f'Per source ({model}; the probes are fitted on all sources of a measure together):', '',
+                  '| target | source | n | P | V | L_img | W |', '|---|---|---|---|---|---|---|']
+        for t, T in M.items():
+            for dom, ps in T.get('per_source', {}).items():
+                if ps:
+                    lines.append(f"| {t} | {dom} | {ps['P']['n']} | " + ' | '.join(f"{ps[k]['value']:.3f}" if k in ps else 'n/a' for k in ('P', 'V', 'L_img', 'W')) + ' |')
         R_['models'][model] = {'status': 'run', 'targets': M}
         lines.append('')
     # Q3: SpatialAxiom-9B against Qwen3.5-9B, asked, paired on the items both answered
@@ -261,7 +361,12 @@ def main():
             if common:
                 ids = [c.split('#')[0] for c in common]
                 boot = Boot(ids)
-                pa, ba = boot.mean(ids, [A[c] for c in common]); pb, bb = boot.mean(ids, [B[c] for c in common])
+                if '_cls' in by['SpatialAxiom-9B']:                     # class: 1 - balanced accuracy on the common items
+                    Yc = np.eye(len(CLASSES))[[by['SpatialAxiom-9B']['_cls'][c] for c in common]]
+                    pa, ba = bal_err(boot, ids, np.array([A[c] for c in common]), Yc)
+                    pb, bb = bal_err(boot, ids, np.array([B[c] for c in common]), Yc)
+                else:
+                    pa, ba = boot.mean(ids, [A[c] for c in common]); pb, bb = boot.mean(ids, [B[c] for c in common])
                 q3[t] = {'SpatialAxiom-9B': stat(pa, ba, len(common)), 'Qwen3.5-9B': stat(pb, bb, len(common)),
                          'difference': stat(pa - pb, ba - bb, len(common)), 'counts': bool(ci(ba - bb)[1] < 0 or ci(ba - bb)[0] > 0)}
     R_['Q3'] = q3
