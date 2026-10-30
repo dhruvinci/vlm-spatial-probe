@@ -48,6 +48,22 @@ E03 adds (`finish_e03`), calm only:
 E03's indoor (NYU) set is E01's 400 images (1,086 objects); people (COCO) is E01's 384, used for 2D position only.
 E07 uses E03's depth sets.
 
+## E04 sources (licences checked on 2026-10-30 on each official page)
+| source | used for | licence / terms |
+|---|---|---|
+| KITTI object, training images not used in E01-E03 | orientation, dimensions | CC BY-NC-SA 3.0 ("All datasets and benchmarks on this page are copyright by us and published under the Creative Commons Attribution-NonCommercial-ShareAlike 3.0 License") |
+| KITTI tracking, training sequences (`oxts` for the car's own motion) | motion | CC BY-NC-SA 3.0 (same statement) |
+| Harmony4D, calm sequences (hugging, sword, ballroom, karate) | orientation, joint angles, motion | MIT (Hugging Face dataset card `Jyun-Ting/Harmony4D`); frame rate 20 per second, from the paper |
+| Objectron test set: chairs, and pedal bicycles only (most of its "bike" class are motorcycles and scooters, excluded by eye) | orientation, dimensions | C-UDA 1.0 ("The C-UDA does not impose any restriction with respect to the use, modification, or distribution of Results") |
+| Hypersim | surfaces, dimensions | CC BY-SA 3.0 |
+| NYU Depth v2, labelled set, images not in E01 | surfaces | no licence stated by the authors; research use |
+| COCO val2017, images not in E01 | counts | annotations CC BY 4.0; images under their Flickr licences |
+
+Not used: Omni3D's own annotations (CC BY-NC 4.0; Objectron is read directly), SUN RGB-D (no licence stated),
+nuScenes (terms not readable without an account), ARKitScenes (Apple non-commercial licence; not needed), and
+TAPVid-3D (annotations CC BY 4.0, but none of its video sources allows redistribution of derived data). Images are not
+redistributed; `src/build_e04.py` and `src/e04_parts/` rebuild them.
+
 ## Models
 
 | model | revision | licence |

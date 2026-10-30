@@ -6,7 +6,7 @@ account balance drop and the pod's hourly price times its uptime; the watchdog t
 
   python src/pod/launch.py create   --state S.json --pubkey KEY.pub
   python src/pod/launch.py upload   --state S.json --key KEY --bundle BUNDLE.tar
-  python src/pod/launch.py start    --state S.json --key KEY
+  python src/pod/launch.py start    --state S.json --key KEY [--script run_e04.sh]
   python src/pod/launch.py watch    --state S.json --key KEY --cache DIR [--stop-at 9.0]   (fetches, then terminates)
   python src/pod/launch.py ssh      --state S.json --key KEY -- CMD
   python src/pod/launch.py terminate --state S.json
@@ -124,7 +124,7 @@ def cmd_upload(a):
 
 def cmd_start(a):
     st = load(a.state)
-    r = ssh(st, a.key, f'cd {REMOTE} && nohup bash src/pod/run_all.sh > /dev/null 2>&1 & echo started')
+    r = ssh(st, a.key, f'cd {REMOTE} && nohup bash src/pod/{a.script} > /dev/null 2>&1 & echo started')
     print(r.stdout, r.stderr[-300:])
 
 
@@ -151,7 +151,8 @@ def fetch(st, k, name, cache, streams=4):
 def fetch_data(st, k, cache):
     """Logs, the layout audits, and the dataset files built on the pod (whichever exist)."""
     paths = ('logs out/E00_audit_*.json data/dataset.json data/nyu.json data/nyu_dense.npz data/images/indoor '
-             'data_e03/dataset.json data_e03/hypersim_checks.json data_e03/images')
+             'data_e03/dataset.json data_e03/hypersim_checks.json data_e03/images '
+             'data_e04/dataset.json data_e04/nyu.json data_e04/hypersim.json data_e04/images/nyu data_e04/images/hypersim')
     p = subprocess.run(' '.join(ssh_base(st, k)) + f" 'cd {REMOTE} && tar cf - $(ls -d {paths} 2>/dev/null)' | tar xf - -C {cache}",
                        shell=True, capture_output=True, text=True, timeout=1800)
     print('fetched logs and data', p.returncode, p.stderr[-300:], flush=True)
@@ -164,13 +165,13 @@ def cmd_watch(a):
         drop, est, acc = spend(st)
         r = ssh(st, a.key, f"cd {REMOTE} && ls out logs 2>/dev/null | tr '\\n' ' '; echo; tail -2 logs/run_all.log; "
                            f"for f in logs/extract_*.log logs/data.log; do [ -f $f ] && echo \"$f: $(tail -c 160 $f | tr '\\n\\r' '  ')\"; done; "
-                           f"ls ALL_DONE data/READY 2>/dev/null; df -h /workspace | tail -1")
+                           f"ls ALL_DONE data/READY data_e04/READY 2>/dev/null; df -h /workspace | tail -1")
         out = r.stdout
         print(time.strftime('%H:%M:%S'), f'spend balance-drop ${drop:.2f} uptime-estimate ${est:.2f}', '|', out.replace('\n', ' | ')[-900:], flush=True)
         for name in re.findall(r'(\S+)\.DONE', out):
             if name not in got and fetch(st, a.key, name, a.cache):
                 got.add(name); st['fetched'] = sorted(got); save(a.state, st)
-        if 'data/READY' in out and not st.get('data_fetched'):
+        if ('data/READY' in out or 'data_e04/READY' in out) and not st.get('data_fetched'):
             fetch_data(st, a.key, a.cache); st['data_fetched'] = True; save(a.state, st)
         done = 'ALL_DONE' in out
         if done or max(drop, est) >= a.stop_at:
@@ -215,6 +216,7 @@ def main():
     ap.add_argument('--cache')
     ap.add_argument('--stop-at', type=float, default=9.0)
     ap.add_argument('--every', type=int, default=60)
+    ap.add_argument('--script', default='run_all.sh', help='the run script under src/pod/ (E04: run_e04.sh)')
     ap.add_argument('rest', nargs='*')
     a = ap.parse_args()
     {'create': cmd_create, 'upload': cmd_upload, 'start': cmd_start, 'watch': cmd_watch, 'ssh': cmd_ssh,
